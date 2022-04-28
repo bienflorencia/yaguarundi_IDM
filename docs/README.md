@@ -8,7 +8,11 @@ output: md_document
 ## Quick Reference of Model Definitions
 
 See more details [here](/model_definitions.md)
+`$n_{PA}$`  
 
+```math 
+$n_{PA}$
+```
 
 <table class=" lightable-paper lightable-striped lightable-hover" style='font-family: "Arial Narrow", arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;'>
  <thead>
