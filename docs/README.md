@@ -28,8 +28,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> i </td>
    <td style="text-align:left;"> index identifying blobs </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large i \text{where} i \in 1:n_{PA}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large i \text{where} i \in 1:n_{PA}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large i \text{ where } i \in 1:n_{PA}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large i \text{ where } i \in 1:n_{PA}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> y.PA[i] </td>
@@ -64,8 +64,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> j </td>
    <td style="text-align:left;"> index identifying grid cells </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large j \text{where} j \in j:n_{PO}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large j \text{where} j \in j:n_{PO}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large j \text{ where } j \in j:n_{PO}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large j \text{ where } j \in j:n_{PO}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> n.PO.half </td>
@@ -118,8 +118,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> c </td>
    <td style="text-align:left;"> index identifying countries </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large c \text{where} c \in 1:n_{cntr}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large c \text{where} c \in 1:n_{cntr}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large c \text{ where } c \in 1:n_{cntr}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large c \text{ where } c \in 1:n_{cntr}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> n.par </td>
@@ -130,8 +130,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> r </td>
    <td style="text-align:left;"> index identifying parameters </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large r \text{where} r \in 1:n_{par}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large r \text{where} r \in 1:n_{par}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large r \text{ where } r \in 1:n_{par}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large r \text{ where } r \in 1:n_{par}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> n.fac </td>
@@ -142,8 +142,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> f </td>
    <td style="text-align:left;"> index identifying factors </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large f \text{where} f \in 1:n_{fac}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large f \text{where} f \in 1:n_{fac}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large f \text{ where } f \in 1:n_{fac}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large f \text{ where } f \in 1:n_{fac}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> n.spl </td>
@@ -238,8 +238,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> psi[i] </td>
    <td style="text-align:left;"> blob-specific probability of presence </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large psi_i}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large psi_i}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large \psi_i}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large \psi_i}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> P.ret[j] </td>
