@@ -22,12 +22,12 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> n.PA </td>
    <td style="text-align:left;"> number of blobs for both time periods (pre and pos) </td>
-   <td style="text-align:left;"> $n_{PA}$ </td>
+   <td style="text-align:left;"> `$n_{PA}$` </td>
   </tr>
   <tr>
    <td style="text-align:left;"> i </td>
    <td style="text-align:left;"> index identifying blobs </td>
-   <td style="text-align:left;"> $i$ where $i \in 1:n_{PA}$ </td>
+   <td style="text-align:left;"> `$i$` where `$i \in 1:n_{PA}$` </td>
   </tr>
   <tr>
    <td style="text-align:left;"> y.PA[i] </td>
