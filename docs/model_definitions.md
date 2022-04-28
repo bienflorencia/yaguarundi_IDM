@@ -11,10 +11,7 @@ output:
     number_sections: no
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(dpi=300, echo = TRUE)
-library(tidyverse)
-```
+
 
 # Definitions (variables and parameters)
 
@@ -203,7 +200,8 @@ library(tidyverse)
 
 # Updated model in BUGS language
 
-```{r model, eval=F}
+
+```r
  'model
   { 
     # PRIORS --------------------------------------------------
