@@ -8,7 +8,8 @@ output: md_document
 ## Quick Reference of Model Definitions
 
 See more details [here](/model_definitions.md)
-`$n_{PA}$`  
+
+<img src="https://render.githubusercontent.com/render/math?math=n_{PA}">" 
 
 ```math 
 $n_{PA}$
