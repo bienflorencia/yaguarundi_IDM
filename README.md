@@ -2,7 +2,7 @@
 
 *Florencia Grattarola, Diana Bowler & Petr Keil*
 
-This repository includes the data, code, model and outputs for our preprint on the change of the yaguarundí's geograhic distribution range.
+This repository includes the data, code, model and outputs for our preprint on the use of integrated species distribution models (IDMs) to study the change over time of the yaguarundí's geograhic distribution range.
 
 Find here:
 
