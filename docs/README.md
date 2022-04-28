@@ -1,13 +1,6 @@
----
-title: "Quick Reference of Model Definitions"
-author: 'Florencia Grattarola, Diana Bowler & Petr Keil'
-date: '30/04/2022'
-output: md_document
----
+# Quick Model References
 
-## Quick Reference of Model Definitions
-
-See more details [here](/model_definitions.md)
+For more details please see [here](/docs/model_definitions.md)  
 
 
 <table class=" lightable-paper lightable-striped lightable-hover" style='font-family: "Arial Narrow", arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;'>
