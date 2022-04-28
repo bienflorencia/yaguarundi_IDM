@@ -33,8 +33,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> i </td>
    <td style="text-align:left;"> index identifying blobs </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={i \text{where} $i \in 1:n_{PA}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={i \text{where} $i \in 1:n_{PA}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={i \text{where} i \in 1:n_{PA}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={i \text{where} i \in 1:n_{PA}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> y.PA[i] </td>
@@ -87,8 +87,8 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> X.PO </td>
    <td style="text-align:left;"> design matrix including vector of 1s (for intercept) and all the covariates and spline bases for each grid-cell for both time periods </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={X_{PO}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={X_{PO}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\mathbf{X_{PO}}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\mathbf{X_{PO}}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> area.PO[j] </td>
@@ -261,7 +261,6 @@ See more details [here](/model_definitions.md)
   <tr>
    <td style="text-align:left;"> lambda[j] </td>
    <td style="text-align:left;"> thinning of the true intensity </td>
-   <td style="text-align:left;"> $\lambda_j$ </td>
    <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\lambda_j}#gh-light-mode-only">
                                  <img src="https://render.githubusercontent.com/render/math?math={\lambda_j}#gh-dark-mode-only"></td>
   </tr>
