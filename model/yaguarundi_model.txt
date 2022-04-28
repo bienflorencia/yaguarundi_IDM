@@ -1,0 +1,97 @@
+model
+  { 
+    # PRIORS --------------------------------------------------
+    
+    ## Thinning at locations with complete accessibility in PO data
+      
+      # intercept of the decay function for each country of origin. 
+      # It needs a flat prior between 0 and 1
+      for (c in 1:n.cntr) 
+      {
+        alpha0[c] ~ dbeta(1, 1)  
+      }
+
+      # steepness of the decaying distance-P.ret relationship in PO data
+      alpha1 ~ dgamma(0.5, 0.05)   
+      
+    ## Effect of sampling effort in PA data
+      beta ~ dnorm(0, 0.01)
+  
+    ## Parametric effects of environment driving the point process intensity
+     # (it also includes an intercept)
+     
+      for (r in 1:n.par)
+      { 
+        b[r] ~ dnorm(0,0.01) 
+      }
+      
+    ## Splines (imported and adjusted form output of mgcv::jagam)
+    
+      ## prior for s(X,Y):as.factor(time)0 
+      sigma.pre <- S.pre[1:n.spl, 1:n.spl] * gamma[1]  + 
+            S.pre[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]
+      b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.pre) 
+     
+      ## prior for s(X,Y):as.factor(time)1
+      sigma.post <- S.post[1:n.spl, 1:n.spl] * gamma[3]  + 
+            S.post[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]
+      b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.post) 
+     
+      ## Priors for smoothing parameter 
+      for (f in 1:n.fac) 
+      {
+        gamma[f] ~ dgamma(.5,.5)
+        rho[f] <- log(gamma[f])
+      }
+
+    # LIKELIHOOD --------------------------------------------------
+    
+      ## --- Presence-Absence (PA) data ---
+      
+       eta.PA <- X.PA %*% b ## linear predictor
+        
+       for (i in 1:n.PA) 
+       { 
+         # the probability of presence
+         cloglog(psi[i]) <- eta.PA[i] + log(area.PA[i]) + beta*log(effort[i])
+          
+         # presences and absences come from a Bernoulli distribution
+         y.PA[i] ~ dbern(psi[i]*0.9999)    
+       } 
+  
+      ## --- Presence-Only (PO) data --- 
+  
+      eta.PO <- X.PO %*% b  ## linear predictor
+
+      for (j in 1:n.PO)
+      {
+        # cell-specific probability of retainin (observing) a point is a function of accessibility
+        P.ret[j] <- alpha0[country[j]] * exp( (-alpha1) * acce[j]) 
+        
+        # true mean number (nu) of points per cell i is the true intensity multiplied by cell area
+        nu[j] <- area.PO[j] * exp(eta.PO[j])
+
+        # thinning: the true lambda
+        lambda[j] <- nu[j] * P.ret[j]
+
+        # counts of observed points come from a Poisson distribution
+        y.PO[j] ~ dpois(lambda[j])
+      }
+  
+    # PREDICTIONS -------------------------------------------------
+    
+    eta.pred <- X.PO %*% b
+
+    for (j in 1:n.PO)
+    {
+      # predicted probability of occurrence in grid cell j
+      cloglog(P.pred[j]) <- eta.pred[j] + log(area.PO[j])
+    }
+
+    # DERIVED QUANTITIES ------------------------------------------
+    
+    # area in each time period, and temporal change of area
+    A.pre <- sum(P.pred[1:n.PO.half])
+    A.post <- sum(P.pred[(n.PO.half+1):n.PO])
+    delta.A <- A.post - A.pre
+  }
