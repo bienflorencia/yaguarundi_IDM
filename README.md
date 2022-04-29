@@ -18,4 +18,4 @@ Grattarola F., Bowler D. & P. Keil. 2022. Integrating presence-only and presence
 
 
 ![](https://inaturalist-open-data.s3.amazonaws.com/photos/83401845/original.jpg)
-Yaguarundí (Herpailurus yagouaroundi). Photo by gabriel_arroyo CC-BY-NC (iNaturalist.org)
+**Yaguarundí** (*Herpailurus yagouaroundi*). Photo by gabriel_arroyo CC-BY-NC ([iNaturalist.org](https://www.naturalista.uy/observations/52468398))
