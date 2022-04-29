@@ -14,3 +14,8 @@ Find here:
 This work is available under [CC-BY license](https://creativecommons.org/licenses/by/4.0/deed.en). If you reuse these scripts for your work, please cite our pre-print:
 
 Grattarola F., Bowler D. & P. Keil. 2022. Integrating presence-only and presence-absence data to model kinetics of species geographic ranges: An example of yaguarundí in Latin America. xxxx. https://doi.org/xxxx
+
+
+
+![](https://inaturalist-open-data.s3.amazonaws.com/photos/83401845/original.jpg)
+Yaguarundí (Herpailurus yagouaroundi). Photo by gabriel_arroyo CC-BY-NC (iNaturalist.org)
