@@ -13,7 +13,7 @@ Find here:
 
 This work is available under [CC-BY license](https://creativecommons.org/licenses/by/4.0/deed.en). If you reuse these scripts for your work, please cite our pre-print:
 
-Grattarola, F., Bowler, D., & Keil, P. (2022). Integrating presence-only and presence-absence data to model changes in species geographic ranges: An example of yaguarundí in Latin America. ecoevorxiv.org/67c4u
+Grattarola, F., Bowler, D., & Keil, P. (2022, April 29). Integrating presence-only and presence-absence data to model changes in species geographic ranges: An example of yaguarundí in Latin America. https://doi.org/10.32942/osf.io/67c4u
 
 
 
