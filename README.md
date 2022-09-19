@@ -4,10 +4,14 @@
 
 This repository includes the data, code, model and outputs for our preprint on the use of integrated species distribution models (IDMs) to study the change over time of the yaguarundí's geograhic distribution range.
 
+
+![DAG](/docs/figs/DAG.png)
+
+
 Find here:
 
   - [Data](/data): PA and PO data to run the model + spatial data  
-  - [Code](/code): IDM run in JAGS   
+  - [Code](/code): code for data processing and IDM run in JAGS   
   - [Model](/model): model file in BUGS language  
   - [Docs](/docs): model diagnostics + definitions + outputs  
 
