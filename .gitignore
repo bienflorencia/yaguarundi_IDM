@@ -40,3 +40,4 @@ vignettes/*.pdf
 .DS_Store
 data/yaguarundi_model*
 big_data/
+data/0046613*
