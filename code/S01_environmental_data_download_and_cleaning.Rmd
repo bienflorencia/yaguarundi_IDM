@@ -1,0 +1,437 @@
+---
+title: "Evironmental data download and cleaning"
+author: "Florencia Grattarola"
+date: "2021-08-14"
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+    toc_float: yes
+    highlight: pygments
+    theme: flatly
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dpi=200, echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r, message = F, warning=F}
+library(rnaturalearth)
+library(tmap)
+library(stars)
+library(terra)
+terraOptions(tempdir = 'big_data/temp')
+library(sf)
+sf::sf_use_s2(FALSE)
+library(tidyverse)
+```
+
+# Basemaps
+
+```{r latam, eval=T, warning=F}
+# world and Latin America
+world <- rnaturalearth::ne_countries(scale = 'large', returnclass = 'sf') %>% st_set_crs("EPSG:4326")
+bbox_Latam_unprojected <- c(xmin=-118.40137, ymin=-55.89170, xmax=-34.80547, ymax= 32.71533)
+Latam_unprojected <- world %>% st_crop(bbox_Latam_unprojected) %>% st_make_valid
+
+# equal area projection (Equatorial Lambert azimuthal equal-area) 
+equalareaCRS <-  '+proj=laea +lon_0=-73.125 +lat_0=0 +datum=WGS84 +units=m +no_defs'
+Latam_projected <- sf::st_transform(Latam_unprojected, crs=equalareaCRS) %>% st_cast() %>% st_make_valid
+Latam_projected <- Latam_projected %>% 
+  mutate(iso_a2=ifelse(is.na(iso_a2) & name=='France', 'GF', iso_a2)) %>% 
+  mutate(name_en=ifelse(iso_a2=='GF' & name_en=='France', 'French Guiana', name_en))
+
+Latam <- st_union(Latam_projected) 
+```
+
+```{r countryraster, eval=T, warning=F}
+Latam.grid <- st_make_grid(Latam+1000, cellsize = 100000, crs = equalareaCRS) %>% st_sf('geometry' = ., 'occ'= 0)
+r <- rast(res=100000, ext(vect(Latam.grid)), crs=equalareaCRS)
+Latam.raster <- terra::rasterize(x = vect(Latam.grid), y = r, field = 'occ') %>% terra::mask(., vect(Latam))
+
+# raster of country names
+Latam.grid_countries <- st_join(Latam.grid, Latam_projected %>% dplyr::select(iso_a2))
+
+Latam_countries <- terra::rasterize(x = vect(Latam.grid_countries),
+                 y = Latam.raster,
+                 field = 'iso_a2',
+                 fun = 'first') %>% terra::mask(., vect(Latam))
+names(Latam_countries) <- 'country'
+
+#plot(Latam_countries)
+
+tmap::tm_shape(Latam_countries) +
+    tmap::tm_raster(col='country', style='cat', palette = "Set1")+
+    tm_layout(legend.show = F) +
+    tmap_options(max.categories = 50)
+```
+
+# Data Sources
+## Download functions
+
+```{r, eval=F}
+# download functions
+download <- function(download_files, download_url){
+  for(file_i in download_files){
+    url <- str_c(download_url, file_i)
+    download.file(url, destfile=str_c('big_data/', file_i))
+    if (endsWith(file_i, '.zip')) {
+      unzip(str_c('big_data/', file_i), exdir=str_c('big_data/', str_remove(file_i, '.zip')))
+      if (file.exists(str_c('big_data/', file_i))) {
+        file.remove(str_c('big_data/', file_i))
+      }
+    }
+  }
+}
+download_worldPop <- function(web_url, years, resolution) {
+  for(year in years) {
+    url <- str_glue('{web_url}{year}/0_Mosaicked/ppp_{year}_{resolution}_Aggregated.tif')
+    path <- 'big_data/popu/'
+    download.file(url, destfile = str_glue('{path}/ppp_{year}_{resolution}_Aggregated.tif'))
+  }
+}
+
+# extend the timeout for downloads
+getOption('timeout') 
+options(timeout=500) 
+```
+
+## Environmental data
+SOURCE: WorldClim V2.1
+Data download at 30 seconds resolution 
+
+```{r, eval=F}
+# download_files <- c('wc2.1_30s_elev.zip', 'wc2.1_30s_tavg.zip', 'wc2.1_30s_prec.zip')
+# download_url <- 'https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/'
+# download(download_files, download_url)
+
+# elevation
+world_elev <- rast('big_data/wc2.1_30s_elev/wc2.1_30s_elev.tif')
+elev_unprojected <- crop(world_elev, ext(Latam_unprojected)+1) 
+elev <- project(elev_unprojected, equalareaCRS, method='bilinear') # reproject to equal area
+names(elev) <- 'elev'
+rm(elev_unprojected)
+
+# average annual temperature
+tavg_files <- list.files('big_data/wc2.1_30s_tavg', '.tif', full.names=TRUE)
+world_tavg <- rast(tavg_files)
+tavg_unprojected <- crop(world_tavg, ext(Latam_unprojected)+1)
+tavg <- project(tavg_unprojected, equalareaCRS, method='bilinear') # reproject to equal area
+tavg <- mean(tavg)
+names(tavg) <- 'tavg'
+rm(tavg_unprojected)
+
+# annual precipitation
+prec_files <- list.files('big_data/wc2.1_30s_prec', '.tif', full.names=TRUE)
+world_prec <- rast(prec_files)
+prec_unprojected <- crop(world_prec, ext(Latam_unprojected)+1)
+prec <- project(prec_unprojected, equalareaCRS, method='bilinear') # reproject to equal area
+prec <- mean(prec)
+names(prec) <- 'prec'
+rm(prec_unprojected)
+```
+
+```{r elev, echo=F, warning=F, message=F}
+elev <- rast('big_data/elev.tif')
+tmap::tmap_mode(mode ='view')
+
+tmap::tm_shape(elev) +
+    tmap::tm_raster(palette = 'BrBG', midpoint = NA, style= "cont", n=10) +
+    tmap::tm_legend(position = c('left', 'bottom'))
+
+```
+
+```{r, eval=F}
+
+# bioclimatic variables
+bio_files <- list.files('big_data/wc2', '.tif', full.names = T)
+world_bio <- rast(bio_files)
+bio_unprojected <- crop(world_bio, ext(Latam_unprojected)+1)
+bio <- project(bio_unprojected, equalareaCRS, method='bilinear') # reproject to equal area
+names(bio) <- sprintf('bio_%s',seq(1:19))
+rm(bio_unprojected)
+
+# BIO1 = Annual Mean Temperature
+# BIO2 = Mean Diurnal Range (Mean of monthly (max temp - min temp))
+# BIO3 = Isothermality (BIO2/BIO7) (×100)
+# BIO4 = Temperature Seasonality (standard deviation ×100)
+# BIO5 = Max Temperature of Warmest Month
+# BIO6 = Min Temperature of Coldest Month
+# BIO7 = Temperature Annual Range (BIO5-BIO6)
+# BIO8 = Mean Temperature of Wettest Quarter
+# BIO9 = Mean Temperature of Driest Quarter
+# BIO10 = Mean Temperature of Warmest Quarter
+# BIO11 = Mean Temperature of Coldest Quarter
+# BIO12 = Annual Precipitation
+# BIO13 = Precipitation of Wettest Month
+# BIO14 = Precipitation of Driest Month
+# BIO15 = Precipitation Seasonality (Coefficient of Variation)
+# BIO16 = Precipitation of Wettest Quarter
+# BIO17 = Precipitation of Driest Quarter
+# BIO18 = Precipitation of Warmest Quarter
+# BIO19 = Precipitation of Coldest Quarter
+```
+
+```{r bio, echo=F, warning=F, message=F}
+bio <- rast('big_data/bio.tif')
+
+# rasterVis::gplot(bio) + geom_tile(aes(fill = value)) +
+#   scale_fill_distiller(palette = 'BrBG' , na.value = NA) +
+#   labs(fill='elevation', x='', y='') +
+#   coord_equal() +
+#   theme_bw()
+plot(bio)
+```
+
+## Land cover
+SOURCE: MODIS Land Cover Type Yearly L3 Global 500m
+
+```{r land.download, eval=F}
+MODIStsp(gui             = FALSE,
+         out_folder      = 'big_data/',
+         out_folder_mod  = 'big_data/',
+         selprod         = 'LandCover_Type_Yearly_500m (MCD12Q1)',
+         bandsel         = 'LC1', 
+         sensor          = 'Terra',
+         user            = 'flograttarola' ,
+         password        = 'sahvex-nuQnuj-govba0',
+         start_date      = '2000.01.01', 
+         end_date        = '2022.12.31', 
+         verbose         = TRUE,
+         bbox            =  c(-5596641.0845, -6673508.6914, 4698677.0087, 4157242.8202), #bbox of Latam
+         spatmeth        = 'bbox',
+         out_format      = 'GTiff',
+         compress        = 'LZW',
+         out_projsel     = 'User Defined',
+         output_proj     = '+proj=laea +lon_0=-73.125 +lat_0=0 +datum=WGS84 +units=m +no_defs',
+         delete_hdf      = TRUE,
+         parallel        = TRUE
+         )
+```
+
+``` {r land.processing, eval=F}
+landcover_pre_files <- list.files('big_data/LandCover_Type_Yearly_500m_v6/LC1', '200[0-1]|201[0-3]', full.names = T)
+landcover_pre_c <- rast(landcover_pre_files)
+landcover_pre <- modal(landcover_pre_c) %>% mask(., vect(Latam))
+names(landcover_pre) <- 'landcover_pre'
+rm(landcover_pre_c)
+
+landcover_pos_files <- list.files('big_data/LandCover_Type_Yearly_500m_v6/LC1', '201[4-9]|202[0-9]', full.names = T)
+landcover_pos_c <- rast(landcover_pos_files)
+landcover_pos <- modal(landcover_pos_c) %>% mask(., vect(Latam))
+names(landcover_pos) <- 'landcover_pos'
+rm(landcover_pos_c)
+```
+
+### Example plot: Land at pre period 
+```{r land.plot, echo=F, warning=F, message=F, eval=F}
+land_pre <- rast('big_data/land_pre.tif')
+land_pre <- as.factor(land_pre$landcover_pre)
+
+levels(land_pre) <- c("Evergreen needleleaf forests",
+                      "Evergreen broadleaf forests",
+                      "Deciduous needleleaf forests",
+                      "Deciduous broadleaf forests",
+                      "Mixed forests",
+                      "Closed shrublands",
+                      "Open shrublands",
+                      "Woody savannas",
+                      "Savannas",
+                      "Grasslands",
+                      "Permanent wetlands",
+                      "Croplands",
+                      "Urban and built-up lands",
+                      "Cropland/natural vegetation mosaics",
+                      "Snow and ice",
+                      "Barren",
+                      "Water bodies")
+
+tmap::tmap_mode(mode ='view')
+tmap::tm_shape(land_pre) +
+    tmap::tm_raster(palette = 'Set2', style= "cat", labels = levels(land_pre)[[1]])
+```
+
+## Vegetation Continuous Fields
+SOURCE: MODIS Vegetation Continous Fields Yearly L3 Global 250m
+
+```{r veg.download, eval=F}
+MODIStsp(gui             = FALSE,
+         out_folder      = 'big_data/',
+         out_folder_mod  = 'big_data/',
+         selprod         = 'Veg_Cont_Fields_Yearly_250m (MOD44B)',
+         bandsel         = c('Percent_Tree_Cover', 'Percent_NonTree_Vegetation', 'Percent_NonVegetated'), 
+         sensor          = 'Terra',
+         user            = 'flograttarola' ,
+         password        = 'sahvex-nuQnuj-govba0',
+         start_date      = '2000.01.01', 
+         end_date        = '2022.12.31', 
+         verbose         = TRUE,
+         bbox            =  c(-5596641.0845, -6673508.6914, 4698677.0087, 4157242.8202), #bbox of Latam
+         spatmeth        = 'bbox',
+         out_format      = 'GTiff',
+         compress        = 'LZW',
+         out_projsel     = 'User Defined',
+         output_proj     = '+proj=laea +lon_0=-73.125 +lat_0=0 +datum=WGS84 +units=m +no_defs',
+         delete_hdf      = TRUE,
+         parallel        = TRUE,
+         reprocess = TRUE
+         )
+```
+
+``` {r veg.processing, eval=F}
+veg_pre_files <- list.files('big_data/Veg_Cont_Fields_Yearly_250m_v6/Perc_TreeCov/', '200[0-9]|201[0-3]', full.names = T)
+veg_pre_c <- rast(veg_pre_files)
+veg_pre <- mean(veg_pre_c, na.rm=T) %>% mask(., vect(Latam))
+names(veg_pre) <- 'veg_pre'
+rm(veg_pre_c)
+
+veg_pos_files <- list.files('big_data/Veg_Cont_Fields_Yearly_250m_v6', '201[4-9]|202[0-9]', full.names = T)
+veg_pos_c <- rast(veg_pos_files)
+veg_pos <- mean(veg_pos_c, na.rm=T) %>% mask(., vect(Latam))
+names(veg_pos) <- 'veg_pos'
+rm(veg_pos_c)
+terra::writeRaster(veg_pos, 'big_data/veg_pos.tif', overwrite=TRUE)
+```
+
+### Example plot: Vegetation at pre period 
+```{r veg.plot, echo=F, warning=F, message=F}
+veg_pre <- rast('big_data/veg_pre.tif')
+tmap::tmap_mode(mode ='view')
+
+tmap::tm_shape(veg_pre) +
+    tmap::tm_raster(palette = 'YlGn', midpoint = NA, style= "cont")
+```
+
+``` {r nontree.processing, eval=F}
+nontree_pre_files <- list.files('big_data/Veg_Cont_Fields_Yearly_250m_v6/Perc_TreeCov/', '200[0-9]|201[0-3]', full.names = T)
+nontree_pre_c <- rast(nontree_pre_files)
+nontree_pre <- mean(nontree_pre_c, na.rm=T) %>% mask(., vect(Latam))
+names(nontree_pre) <- 'nontree_pre'
+rm(nontree_pre_c)
+
+nontree_pos_files <- list.files('big_data/Veg_Cont_Fields_Yearly_250m_v6', '201[4-9]|202[0-9]', full.names = T)
+nontree_pos_c <- rast(nontree_pos_files)
+nontree_pos <- mean(nontree_pos_c, na.rm=T) %>% mask(., vect(Latam))
+names(nontree_pos) <- 'nontree_pos'
+rm(nontree_pos_c)
+terra::writeRaster(nontree_pos, 'big_data/nontree_pos.tif', overwrite=TRUE)
+```
+
+### Example plot: Non tree vegetation at pre period 
+```{r nontree.plot, echo=F, warning=F, message=F}
+nontree_pre <- rast('big_data/nontree_pre.tif')
+tmap::tmap_mode(mode ='view')
+
+tmap::tm_shape(nontree_pre) +
+    tmap::tm_raster(palette = 'YlGn', midpoint = NA, style= "cont")
+```
+
+
+## Net Primary Production (NPP)
+SOURCE: MODIS Net Primary Production Yearly L4 Global 1km
+
+```{r npp.download, eval=F}
+MODIStsp(gui             = FALSE,
+         out_folder      = 'big_data/',
+         out_folder_mod  = 'big_data/',
+         selprod         = 'Net_PP_GapFil_Yearly_500m (M*D17A3HGF)',
+         bandsel         = 'Npp', 
+         sensor          = 'Terra',
+         user            = 'flograttarola' ,
+         password        = 'sahvex-nuQnuj-govba0',
+         start_date      = '2000.01.01', 
+         end_date        = '2022.12.31', 
+         verbose         = TRUE,
+         bbox            =  c(-5596641.0845, -6673508.6914, 4698677.0087, 4157242.8202), #bbox of Latam
+         spatmeth        = 'bbox',
+         out_format      = 'GTiff',
+         compress        = 'LZW',
+         out_projsel     = 'User Defined',
+         output_proj     = '+proj=laea +lon_0=-73.125 +lat_0=0 +datum=WGS84 +units=m +no_defs',
+         delete_hdf      = TRUE,
+         parallel        = TRUE
+         )
+```
+
+``` {r npp.processing, eval=F}
+npp_pre_files <- list.files('big_data/Net_PP_Yearly_500m_v6/Npp', '200[0-9]|201[0-3]', full.names = T)
+npp_pre_c <- rast(npp_pre_files)
+npp_pre <- mean(npp_pre_c) %>% mask(., vect(Latam))
+names(npp_pre) <- 'npp_pre'
+rm(npp_pre_c)
+
+npp_pos_files <- list.files('../../../OneDrive - CZU v Praze/big_data/Net_PP_Yearly_500m_v6/Npp', '201[4-9]|202[0-9]', full.names = T)
+npp_pos_c <- rast(npp_pos_files)
+npp_pos <- mean(npp_pos_c) %>% mask(., vect(Latam))
+names(npp_pos) <- 'npp_pos'
+rm(npp_pos_c)
+```
+
+### Example plot: NPP at pre period 
+```{r npp.plot, echo=F, warning=F, message=F}
+npp_pre <- rast('big_data/npp_pre.tif')
+tmap::tmap_mode(mode ='view')
+
+tmap::tm_shape(npp_pre) +
+    tmap::tm_raster(palette = 'BuGn', midpoint = NA, style= "cont")
+```
+
+
+## Thining data
+### Accessibility
+SOURCE: Weiss et al. (2019) https://doi.org/10.1038/nature25181
+vector 1:110m scale - Version 4.1.0
+
+```{r acce.processing, eval=F}
+world_acce <- rast('big_data/acc_50k.tif')
+acce_unprojected <- crop(world_acce, ext(Latam_unprojected)+1) 
+acce <- project(acce_unprojected, equalareaCRS, method='near') # reproject to equal area
+names(acce) <- 'acce'
+rm(acce_unprojected)
+```
+
+```{r acce.plot, echo=T, warning=F, message=F}
+acce <- rast('big_data/acce.tif')
+
+tmap::tmap_mode(mode ='view')
+tmap::tm_shape(acce) +
+    tmap::tm_raster(palette = 'Spectral', n=12, style = 'cont')
+```
+
+# Save data
+
+```{r, eval=F}
+# covariates
+terra::writeRaster(elev, 'big_data/elev.tif', overwrite=TRUE)
+terra::writeRaster(tavg, 'big_data/tavg.tif', overwrite=TRUE)
+terra::writeRaster(prec, 'big_data/prec.tif', overwrite=TRUE)
+
+terra::writeRaster(bio, 'big_data/bio.tif', overwrite=TRUE)
+
+terra::writeRaster(landcover_pre, 'big_data/land_pre.tif', overwrite=TRUE)
+terra::writeRaster(landcover_pos, 'big_data/land_pos.tif', overwrite=TRUE)
+
+terra::writeRaster(veg_pre, 'big_data/veg_pre.tif', overwrite=TRUE)
+terra::writeRaster(veg_pos, 'big_data/veg_pos.tif', overwrite=TRUE)
+
+terra::writeRaster(nontree_pre, 'big_data/nontree_pre.tif', overwrite=TRUE)
+terra::writeRaster(nontree_pos, 'big_data/nontree_pos.tif', overwrite=TRUE)
+
+terra::writeRaster(npp_pre, 'big_data/npp_pre.tif', overwrite=TRUE)
+terra::writeRaster(npp_pos, 'big_data/npp_pos.tif', overwrite=TRUE)
+
+# thinning variables
+terra::writeRaster(popu, 'big_data/popu.tif', overwrite=TRUE)
+terra::writeRaster(acce, 'big_data/acce.tif', overwrite=TRUE)
+```
+
+```{r basemaps}
+# basemaps
+st_write(Latam, 'data/Latam_vector.shp', append = F)
+st_write(Latam_projected, 'data/Latam_vector_countries.shp', append = F)
+terra::writeRaster(Latam.raster, 'data/Latam_raster.tif', overwrite=TRUE)
+terra::writeRaster(Latam_countries, 'data/Latam_raster_countries.tif', overwrite=TRUE)
+```
+
+As a general practice, you should not save `Raster*` objects to rds data files. Use `writeRaster` instead and save as a tif. This is because large objects are backed by temporary files on disk that disappear at the end of a session. – Robert Hijmans 

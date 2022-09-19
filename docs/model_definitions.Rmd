@@ -16,27 +16,31 @@ knitr::opts_chunk$set(dpi=300, echo = TRUE)
 library(tidyverse)
 ```
 
+# DAG
+
+![DAG](docs/figs/DAG.png)
+
 # Definitions (variables and parameters)
 
 **Presence-absence data (camera-trap surveys)**  
 
   - `n.PA`: number of blobs for both time periods (pre and pos) -- **notation:** $n_{PA}$   
   - `i`: index identifying blobs, $i$, where $i \in 1:n_{PA}$ -- **notation:** $i$ 
-  - `y.PA[i]`: presence (1) or absence (0) value in each i-th blob (overlapping surveys' area), can be for pre- or post- period -- **notation:** $y_{PA_i}$   
+  - `y.PA[i]`: presence (1) or absence (0) value in each $i$-th blob (overlapping surveys' area), can be for pre- or post- period -- **notation:** $y_{PA_i}$   
   - `X.PA`: design matrix including vector of 1s (for intercept) and all the covariates and spline bases for each blob, for both time periods -- **notation:** $\mathbf{X_{PA}}$  
-  - `area.PA[i]`: area of i-th blob in meters for both time periods -- **notation:** $area_{PA_i}$  
-  - `effort[i]`: sampling effort for i-th blob in the given period for both time periods -- **notation:** $effort_i$   
+  - `area.PA[i]`: area of $i$-th blob in meters for both time periods -- **notation:** $area_{PA_i}$  
+  - `effort[i]`: sampling effort for $i$-th blob in the given period for both time periods -- **notation:** $effort_i$   
   
 **Presence-only data (occurrence records)**  
 
   - `n.PO`: number of grid-cells for both time periods (pre and pos) -- **notation:** $n_{PO}$    
   - `j`: index identifying grid cells -- **notation** $j$, where $j \in 1:{n_{PO}}$
   - `n.PO.half`: number of grid-cells for one time period -- **notation** $n_{PO/2}$  
-  - `y.PO[j]`: count of observed points in j-th grid-cell, can be for pre- or post- period-- **notation:** $y_{PO_j}$
+  - `y.PO[j]`: count of observed points in $j$-th grid-cell, can be for pre- or post- period-- **notation:** $y_{PO_j}$
   - `X.PO`: design matrix including vector of 1s (for intercept) and all the covariates and spline bases for each grid-cell for both time periods -- **notation:** $X_{PO}$  
   - `area.PO[j]`: area of each grid-cell in meters for both time periods -- **notation:** $area_{PO_j}$  
-  - `acce[j]`: accessibility from urban areas based on travel time for j-th grid-cell for both time periods -- **notation:** $acce_j$  
-  - `country[j]`: country name for j-th grid-cell for both time periods -- **notation:** $country_j$  
+  - `acce[j]`: accessibility from urban areas based on travel time for $j$-th grid-cell for both time periods -- **notation:** $acce_j$  
+  - `country[j]`: country name for $j$-th grid-cell for both time periods -- **notation:** $country_j$  
 
 **Auxiliary variables** 
 
@@ -69,9 +73,9 @@ library(tidyverse)
 **Calculated variables**
 
   - `eta.PA`: linear predictor for presence-absence data -- **notation:** $\mathbf{\eta_{PA}}$      
-  - `eta.PA[i]`: expected presence-absence for the i-th blob -- **notation:** $\eta_{PA_i}$  
+  - `eta.PA[i]`: expected presence-absence for the $i$-th blob -- **notation:** $\eta_{PA_i}$  
   - `eta.PO`: linear predictor for presence-only data -- **notation:** $\mathbf{\eta_{PO}}$    
-  - `eta.PO[j]`: expected count points for the j-th grid-cell -- **notation:** $\eta_{PO_j}$
+  - `eta.PO[j]`: expected count points for the $j$-th grid-cell -- **notation:** $\eta_{PO_j}$
   - `psi[i]`: blob-specific probability of presence -- **notation:** $\psi_i$ 
   - `P.ret[j]`: cell-specific probability of retaining (observing) a point as a function of accessibility and country of origin -- **notation:** $P_{ret_j}$   
   - `nu[j]`: true mean number of points per grid-cell (the true intensity) -- **notation:** $\nu_j$    
@@ -88,6 +92,8 @@ library(tidyverse)
   - `A.pre`, range area in the first time period (pre) -- **notation:** $A_{pre}$
   - `A.post`: range area in the second time period (post) -- **notation:** $A_{post}$  
   - `delta.A`: temporal change of range area (post-pre) -- **notation:** $\Delta A$ 
+  - `delta.Grid`: uncertainty (SD) of the temporal change (post-pre) -- **notation:** $\Delta SD$  
+  
   
 # Equations
 
@@ -98,22 +104,22 @@ library(tidyverse)
   Intercept of the decay function varying for country of origin (it needs a flat prior between 0 and 1)  
   
   **JAGS code**:  `for (i in 1:n.cntr) { alpha0[c] ~ dbeta(1, 1) }`  
-  **Equation**:  $\alpha_{0_c} \sim {\sf Beta}(1,1)$ where $c \in 1:n_{cntr}$  
+  **Equation**:  $\alpha_{0_c} \sim \textsf{Beta}(1,1)$ where $c \in 1:n_{cntr}$  
 
   Steepness of the decaying distance-P.ret relationship in PO data   
   
   **JAGS code**:  `alpha1 ~ dgamma(0.5, 0.05)`  
-  **Equation** :  $\alpha_1 \sim {\sf Gamma}(0.5, 0.05)$  
+  **Equation** :  $\alpha_1 \sim \textsf{Gamma}(0.5, 0.05)$  
 
  - Effect of sampling effort in presence-absence (PA) data  
 
   **JAGS code**:  `beta ~ dnorm(0, 0.01)`  
-  **Equation**:  $\beta \sim {\sf Normal}(0, 0.01)$  
+  **Equation**:  $\beta \sim \textsf{Normal}(0, 0.01)$  
       
  - Parametric effects of environment driving the point process intensity (it also includes an intercept)
 
   **JAGS code**:  `for (r in 1:n.par) { b[r] ~ dnorm(0,0.01) }`  
-  **Equation**:  $b_r \sim {\sf Normal}(0, 0.01)$ where $r \in 1:n_{par}$   
+  **Equation**:  $b_r \sim \textsf{Normal}(0, 0.01)$ where $r \in 1:n_{par}$   
 
  - Splines (imported and adjusted form output of `mgcv::jagam`)  
   
@@ -122,19 +128,19 @@ library(tidyverse)
   **Equation:** $\sigma_{pre} = S_{pre_{1:n.spl, 1:n.spl}} \times \gamma_1  + S_{pre_{1:n.spl, n.spl+1:n.spl \times 2}} \times \gamma_2$  
   
   **JAGS code:** `b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.pre)`  
-  **Equation:** $b_{n.par+1:n.spl+n.par} \sim {\sf Normal}(Z_{n.par+1:n.spl+n.par}, \sigma_{pre})$  
+  **Equation:** $b_{n.par+1:n.spl+n.par} \sim \textsf{Normal}(Z_{n.par+1:n.spl+n.par}, \sigma_{pre})$  
 
   prior for s(X,Y):as.factor(time)1  
   **JAGS code:** `sigma.post <- S.post[1:n.spl, 1:n.spl] * gamma[3] + S.post[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]`  
   **Equation:** $\sigma_{pos} = S_{pos_{1:n.spl, 1:n.spl}} \times \gamma_3  + S_{pos_{1:n.spl, n.spl+1:n.spl \times 2}} \times \gamma_4$  
   
   **JAGS code:** `b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.post)`  
-  **Equation:** $b_{n.X-n.spl+1:n.X} \sim {\sf Normal}(Z_{n.X-n.spl+1:n.X}, \sigma_{pos})$  
+  **Equation:** $b_{n.X-n.spl+1:n.X} \sim \textsf{Normal}(Z_{n.X-n.spl+1:n.X}, \sigma_{pos})$  
       
  - Priors for smoothing parameter  
  
   **JAGS code:** `for (f in 1:n.fac) { gamma[f] ~ dgamma(.5,.5)}`   
-  **Equation:** $\gamma_{f} \sim {\sf Gamma}(0.5, 0.5)$   
+  **Equation:** $\gamma_{f} \sim \textsf{Gamma}(0.5, 0.5)$   
 
   **JAGS code:** `for (f in 1:n.fac) { rho[f] <- log(gamma[f])}`   
   **Equation:** $\rho_{f} = \log(gamma_f)$   
@@ -163,7 +169,7 @@ library(tidyverse)
 
   Cell-specific probability of retaining (observing) a point is a function of accessibility  
   **JAGS code:** `for (j in 1:n.PO) { P.ret[j] <- alpha0[country[j]] * exp( (-alpha1) * acce[j]) }`  
-  **Equation:** $P_{ret_j} = \alpha_{0_{country_j}} \times \exp^{-\alpha_1 \times acce_j}$  
+  **Equation:** $P_{ret_j} = \alpha_{0c} \times \exp^{-\alpha_1 \times acce_j}$  
         
   true mean number (lambda) of points per cell i is the true intensity multiplied by cell area  
   **JAGS code:** `for (j in 1:n.PO) { nu[j] <- area.PO[j] * exp(eta.PO[j]) }`  
@@ -175,7 +181,7 @@ library(tidyverse)
 
   counts of observed points come from Poisson distribution  
   **JAGS code:** `for (j in 1:n.PO) { y.PO[j] ~ dpois(lambda[j]) }`  
-  **Equation:** $Y_{PO_j} \sim Poisson(\lambda_j)$  
+  **Equation:** $y_{PO_j} \sim Poisson(\lambda_j)$  
   
 
 ## Predictions
@@ -195,12 +201,41 @@ library(tidyverse)
   **Equation:** $A_{pre} = \sum \eta_{pred_j}$ where $j \in 1:n_{PO}/2$  
   
   **JAGS code:** `A.post <- sum(P.pred[(n.PO.half+1):n.PO])`  
-  **Equation:** $A_{pos} = \sum \eta_{pred_j}$ where $j \in n_{PO}/2:n_{PO}$  
+  **Equation:** $A_{post} = \sum \eta_{pred_j}$ where $j \in n_{PO}/2:n_{PO}$  
   
   **JAGS code:** `delta.A <- A.post - A.pre`  
   **Equation:** $\Delta A  = A_{pos} - A_{pre}$  
 
+  **JAGS code:** `delta.Grid[j] <- P.pred[n.PO.half+j] - P.pred[j]`  
+  **Equation:** $\Delta SD_j  = P_{pred_{n_{PO}/2+j}} - P_{pred_j}$  
 
+## Posterior predictive checks
+
+ - Presence-Absence (PA) data 
+ 
+  fit assessments: Tjur R-Squared (fit statistic for logistic regression)
+  **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   # replicate (new) data set  
+  **Equation:**
+  **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`  
+  **Equation:**
+  **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`  
+  **Equation:**
+  
+  discrepancy measures for entire PA data set
+  **JAGS code:** `pres.n <- sum(y.PA.new[] > 0)`  
+  **Equation:**
+  **JAGS code:** `absc.n <- sum(y.PA.new[] == 0)`   
+  **Equation:**
+  **JAGS code:** `r2_tjur <- abs(sum(pres[])/pres.n - sum(absc[])/absc.n)`  
+  **Equation:**
+
+ - Presence-Only (PO) data
+ 
+  discrepancy measures for entire data set
+  **JAGS code:** `mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))`
+  **JAGS code:** `fit.PO <- sum(ppft[])`                    
+  **JAGS code:** `fit.PO.new <- sum(ppft.new[])`
+  
 # Updated model in BUGS language
 
 ```{r model, eval=F}

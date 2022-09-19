@@ -1,0 +1,331 @@
+---
+title: "Preparation of data for modelling"
+author: "Florencia Grattarola"
+date: '2022-09-08'
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+    highlight: pygments
+    theme: flatly
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dpi=300, echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+
+```{r libraries}
+# spatial libraries
+library(tmap)
+library(terra)
+library(sf)
+library(tidyverse)
+```
+
+# Get the data
+
+## Basemaps
+```{r, message = FALSE, warning=FALSE}
+Latam.raster <- terra::rast('data/Latam_raster.tif')
+Latam_countries <- terra::rast('data/Latam_raster_countries.tif')
+```
+
+## Covariates 
+
+ - Elevation  
+ - Net Primary Productivity  
+ - Bio 4: Temperature Seasonality 
+ - Bio 7: Temperature Annual Range
+ - Bio 10: Mean Temperature of Warmest Quarter
+ - Bio 13: Precipitation of Wettest Month
+ - Bio 15: Precipitation Seasonality (Coefficient of Variation)
+
+We area going to assume climate is constant and use **WorldClim** data. We could also use **TerraClimate** (`climateR` package). Later, we will consider CHELSEA  (1901-2016) and make a cutoff at 1996.  
+
+``` {r, message = FALSE, warning=FALSE, echo=F, eval=F}
+# for specifications on how these data were prepared see covariates_and_thinning_parameters.Rmd
+elev <- terra::rast('big_data/elev.tif')
+bio <- terra::rast('big_data/bio.tif')
+
+npp_pre <- terra::rast('big_data/npp_pre.tif')
+npp_pos <- terra::rast('big_data/npp_pos.tif')
+npp <- mean(c(npp_pre, npp_pos), na.rm=T)
+names(npp) <- 'npp'
+npp <- resample(npp, elev, method='bilinear') 
+
+# environmental layers for PA
+env <- c(elev, bio[[c(4,7,10,13,15)]], npp) %>% 
+  classify(cbind(NaN, NA))
+
+# resample and scaled values for PO
+env_100k_resampled <- terra::resample(env, Latam.raster, method='bilinear') %>% 
+  classify(cbind(NaN, NA)) %>% scale() # scaled values to 0 mean and sd of 1
+```
+
+### Alternative for all variables
+``` {r, message = FALSE, warning=FALSE, eval=F}
+# for specifications on how these data were prepared see covariates_and_thinning_parameters.Rmd
+elev <-  rast('big_data/elev.tif')
+bio <- rast('big_data/bio.tif')
+
+npp_pre <- terra::rast('big_data/npp_pre.tif')
+npp_pos <- terra::rast('big_data/npp_pos.tif')
+npp <- mean(c(npp_pre, npp_pos), na.rm=T)
+rm(npp_pre, npp_pos)
+npp <- resample(npp, elev, method='bilinear')
+names(npp) <- 'npp'
+
+tree_pre <- terra::rast('big_data/veg_pre.tif')
+tree_pos <- terra::rast('big_data/veg_pos.tif')
+tree <- mean(c(tree_pre, tree_pos), na.rm=T)
+rm(tree_pre, tree_pos)
+tree <- resample(tree, elev, method='bilinear')
+names(tree) <- 'tree'
+
+nontree_pre <- terra::rast('big_data/nontree_pre.tif')
+nontree_pos <- terra::rast('big_data/nontree_pos.tif')
+nontree <- mean(c(nontree_pre, nontree_pos), na.rm=T)
+rm(nontree_pre, nontree_pos) # to free memory
+nontree <- resample(nontree, elev, method='bilinear')
+names(nontree) <- 'nontree'
+
+# environmental layers for PA
+env <- c(elev, bio, npp, tree, nontree) %>% 
+  classify(cbind(NaN, NA))
+
+# rm(elev, bio) # to free memory
+# file.remove(terra::sources(npp), terra::sources(tree), terra::sources(nontree))
+# terra::writeRaster(env, 'big_data/env.tif', overwrite=T)
+#tmpFiles(remove=T) # to free memory
+
+land_pre <- terra::rast('big_data/land_pre.tif')
+land_pos <- terra::rast('big_data/land_pos.tif')
+land <- modal(c(land_pre, land_pos), na.rm=T)
+rm(land_pre, land_pos)
+land <- resample(land, elev, method='near')
+names(land) <- 'land'
+rm(land_pre, land_pos)
+# terra::writeRaster(land, 'big_data/land.tif', overwrite=T)
+```
+
+```{r covariates}
+env <- terra::rast('big_data/env.tif')
+land <- terra::rast('big_data/land.tif')
+
+# resample and scaled values for PO
+env_100k_resampled <- terra::resample(env, Latam.raster, method='bilinear') %>% 
+  classify(cbind(NaN, NA)) %>% scale() # scaled values to 0 mean and sd of 1
+
+land_100k_resampled <- terra::resample(land, Latam.raster, method='near') %>% 
+  classify(cbind(NaN, NA)) 
+```
+
+
+## Thinning parametres 
+
+ - Accessibility  
+ - Country of origin (GBIF)
+ 
+``` {r, message = FALSE, warning=FALSE}
+# for specifications on how these data were prepared see covariates_and_thinning_parameters.Rmd
+acce <- terra::rast('big_data/acce.tif')
+acce_100k <- terra::resample(x= acce, y = Latam.raster, method = 'bilinear') %>% 
+  classify(cbind(NaN, NA)) 
+
+# scaled values
+acce_100k_resampled <- acce_100k / max(acce_100k[], na.rm=T)
+```
+
+# Example case 
+
+The data used as an example will be for Herpailurus yagouaroundi.
+
+## Presence-only data
+``` {r, message = FALSE, warning=FALSE}
+# for specifications on how these data were prepared see biodiversity_data_preparation.Rmd
+PO_herpailurus_pre <- terra::rast('data/PO_herpailurus_pre_raster.tif') 
+PO_herpailurus_pos <- terra::rast('data/PO_herpailurus_pos_raster.tif')
+
+# calculate area in each raster cell
+PO_herpailurus.area <- terra::cellSize(PO_herpailurus_pre[[1]], unit='m', transform=F) %>% 
+  classify(cbind(NaN, NA)) %>% values()
+
+# calculate coordinates for each raster cell
+PO_herpailurus.coords <- terra::xyFromCell(PO_herpailurus_pre, cell=1:ncell(PO_herpailurus_pre)) %>% as.data.frame()
+names(PO_herpailurus.coords) <- c('X', 'Y')
+
+# number of cells in the rasters (both the same)
+PO_herpailurus.cell <- 1:ncell(PO_herpailurus_pre)
+
+# with the environmental variables values for each cell
+PO_herpailurus.env <- env_100k_resampled[] # scaled values
+PO_herpailurus.land <- land_100k_resampled[] # scaled values
+
+# with the mean accessibility value for each cell
+PO_herpailurus.acce <- acce_100k_resampled # scaled values
+
+# calculate point count in each raster cell
+PO_herpailurus_pre.count <- PO_herpailurus_pre %>%
+    classify(cbind(NaN, NA)) %>% values %>% as_tibble %>% 
+  dplyr::select(count)
+
+PO_herpailurus_pos.count <- PO_herpailurus_pos %>%
+    classify(cbind(NaN, NA)) %>% values %>% as_tibble %>% 
+  dplyr::select(count)
+
+PO_herpailurus.countries <- Latam_countries %>% classify(cbind(NaN, NA))
+
+# save pre and pos datasets 
+PO_herpailurus_pre.model.data <- data.frame(PO_herpailurus.coords,
+                                            pixel = PO_herpailurus.cell[],
+                                            area = PO_herpailurus.area,
+                                            pt.count = PO_herpailurus_pre.count,
+                                            env = cbind(PO_herpailurus.env, 
+                                                        land=PO_herpailurus.land),
+                                            acce = PO_herpailurus.acce[], 
+                                            country = PO_herpailurus.countries[])
+
+PO_herpailurus_pos.model.data <- data.frame(PO_herpailurus.coords,
+                                            pixel = PO_herpailurus.cell[],
+                                            area = PO_herpailurus.area,
+                                            pt.count = PO_herpailurus_pos.count,
+                                            env = cbind(PO_herpailurus.env, 
+                                                        land=PO_herpailurus.land),
+                                            acce = PO_herpailurus.acce[], 
+                                            country = PO_herpailurus.countries[])
+
+```
+
+## Presence-absence data 
+``` {r, message = FALSE, warning=FALSE}
+# for specifications on how these data were prepared see biodiversity_data_preparation.Rmd
+PA_herpailurus_pre <- readRDS('data/PA_herpailurus_pre_blobs.Rds')
+PA_herpailurus_pos <- readRDS('data/PA_herpailurus_pos_blobs.Rds')
+
+# calculate area, coordinates, and point count in each raster cell
+PA_herpailurus.area.pre <- as.numeric(PA_herpailurus_pre$blobArea) 
+PA_herpailurus.area.pos <- as.numeric(PA_herpailurus_pos$blobArea) 
+
+PA_herpailurus.coords.pre <- st_coordinates(st_centroid(PA_herpailurus_pre)) %>% as_tibble()
+PA_herpailurus.coords.pos <- st_coordinates(st_centroid(PA_herpailurus_pos)) %>% as_tibble()
+
+PA_herpailurus.pixel.pre <- terra::cells(PO_herpailurus_pre, vect(st_centroid(PA_herpailurus_pre))) 
+PA_herpailurus.pixel.pos <- terra::cells(PO_herpailurus_pos, vect(st_centroid(PA_herpailurus_pos))) 
+
+# mode to calculate the most frequent value for the blob - this needs to be changed to getting the %are for each landcover
+mode_raster  <- function(x, na.rm = FALSE) {
+  if(na.rm){ x = x[!is.na(x)]}
+  ux <- unique(x)
+  return(ux[which.max(tabulate(match(x, ux)))])
+}
+
+PA_herpailurus.env.pre <- terra::extract(x = env, y = vect(PA_herpailurus_pre), fun = mean, rm.na=T) %>% 
+  mutate(across(where(is.numeric), ~ifelse(is.nan(.), NA, .))) %>% scale()
+
+PA_herpailurus.land.pre <- terra::extract(x = land, y = vect(PA_herpailurus_pre), fun = mode_raster, na.rm=TRUE)
+
+PA_herpailurus.env.pos <- terra::extract(x = env, y = vect(PA_herpailurus_pos), fun = mean, rm.na=T) %>% 
+  mutate(across(where(is.numeric), ~ifelse(is.nan(.), NA, .))) %>% scale()
+
+PA_herpailurus.land.pos <- terra::extract(x = land, y = vect(PA_herpailurus_pos), fun = mode_raster, na.rm=TRUE)
+
+
+PA_herpailurus_pre.model.data <- data.frame(pixel = PA_herpailurus.pixel.pre, 
+                                            PA_herpailurus.coords.pre,
+                                            area = PA_herpailurus.area.pre,
+                                            presabs = PA_herpailurus_pre$presence,
+                                            effort = PA_herpailurus_pre$effort,
+                                            env = cbind(PA_herpailurus.env.pre[,2:24], 
+                                                        land=PA_herpailurus.land.pre[,2]))
+
+PA_herpailurus_pos.model.data <- data.frame(pixel = PA_herpailurus.pixel.pos, 
+                                            PA_herpailurus.coords.pos,
+                                            area = PA_herpailurus.area.pos,
+                                            presabs = PA_herpailurus_pos$presence,
+                                            effort = PA_herpailurus_pos$effort,
+                                            env = cbind(PA_herpailurus.env.pos[,2:24], 
+                                                        land=PA_herpailurus.land.pos[,2]))
+
+```
+
+### Plots
+
+```{r presence-absence-plots, message = FALSE, warning=FALSE, eval=T}
+tmap::tmap_mode(mode ='view')
+
+tmap::tm_shape(PA_herpailurus_pre) +
+  tmap::tm_fill(col = 'presence', n=2, 
+                palette = 'Spectral', syle='pretty', legend.show = F)
+
+tmap::tm_shape(PA_herpailurus_pos) +
+  tmap::tm_fill(col = 'presence', n=2, 
+                palette = 'Spectral', syle='pretty', legend.show = F) 
+```
+
+
+### Datasets in the covariate space
+The range (and interquartile range) of values for each covariate that is sampled by each dataset
+
+```{r range, message = FALSE, warning=FALSE, eval=T}
+getRangeIQR <- function(env_PX){
+  env_PX.df <- tibble(env= character(),
+                          range = numeric(),
+                     iqr = numeric(),
+                     stringsAsFactors=FALSE)
+  
+  for (i in 1:ncol(env_PX)){
+    df <- tibble(env = names(env_PX[i]),
+             range = range(env_PX[[i]], na.rm=T)[2],
+             iqr=  IQR(env_PA[[i]], na.rm = T))
+    env_PX.df <- rbind(env_PX.df, df)
+  }
+  return(env_PX.df)
+}
+
+# covariates for PA
+env_PA <- terra::extract(x = env, 
+                         y = rbind(vect(PA_herpailurus_pre), 
+                                   vect(PA_herpailurus_pos)), #st_join with pos
+                                     fun = mean, rm.na=T) %>% 
+  mutate(across(where(is.numeric), ~ifelse(is.nan(.), NA, .))) 
+
+summary(env_PA[-1])
+
+env_PA.RangeIQR <- getRangeIQR(env_PA[-1]) %>% mutate(data='PA')
+
+for (i in 2:ncol(env_PA)){
+    range <- range(env_PA[[i]], na.rm=T)[2]
+    iqr <- IQR(env_PA[[i]], na.rm = T)
+    print(str_glue('PA {names(env_PA[i])} -> range: {range} - IQR: {iqr}'))
+}
+
+# covariates layers for PO
+env_PO <- terra::resample(env, Latam.raster, method='bilinear') %>% 
+  classify(cbind(NaN, NA)) %>% as.data.frame()
+
+summary(env_PO)
+
+env_PO.RangeIQR <- getRangeIQR(env_PO) %>% mutate(data='PO')
+
+for (i in 1:ncol(env_PO)){
+    range <- range(env_PO[[i]], na.rm=T)[2]
+    iqr <- IQR(env_PO[[i]], na.rm = T)
+    print(str_glue('PO {names(env_PO[i])} -> range: {range} - IQR: {iqr}'))
+}
+
+```
+
+
+## Save the data
+```{r, eval=T}
+write_csv(left_join(env_PA.RangeIQR, env_PO.RangeIQR, by='env'), file='docs/range_and_IQR.csv')
+
+saveRDS(PO_herpailurus_pre.model.data, 'data/PO_pre.rds') 
+saveRDS(PO_herpailurus_pos.model.data, 'data/PO_post.rds') 
+
+saveRDS(PA_herpailurus_pre.model.data, 'data/PA_pre.rds')
+saveRDS(PA_herpailurus_pos.model.data, 'data/PA_post.rds')
+```
+

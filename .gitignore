@@ -38,4 +38,5 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 .DS_Store
-data/yaguarundi_model.rds
+data/yaguarundi_model*
+big_data/

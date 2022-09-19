@@ -1,0 +1,67 @@
+﻿sciName,TAXON_KEY_GBIF,sp,order,family,genus,specificEpithet,authoritySpeciesAuthor,biogeographicRealm,countryDistribution,iucnStatus
+Conepatus_chinga,2434870,Conepatus chinga,CARNIVORA,MEPHITIDAE,Conepatus,chinga,G. I. Molina,Neotropic,Peru|Brazil|Bolivia|Paraguay|Uruguay|Chile|Argentina,LC
+Conepatus_leuconotus,2434878,Conepatus leuconotus,CARNIVORA,MEPHITIDAE,Conepatus,leuconotus,Lichtenstein,"Nearctic, Neotropic",United States|Mexico|Guatemala|Honduras|El Salvador|Nicaragua,LC
+Conepatus_semistriatus,2434883,Conepatus semistriatus,CARNIVORA,MEPHITIDAE,Conepatus,semistriatus,Boddaert,Neotropic,Mexico|Guatemala|Belize|Honduras|Nicaragua|Costa Rica|Panama|Venezuela|Colombia|Ecuador|Peru,LC
+Mephitis_macroura,5219394,Mephitis macroura,CARNIVORA,MEPHITIDAE,Mephitis,macroura,Lichtenstein,Nearctic,United States|Mexico|Guatemala|Honduras|El Salvador|Nicaragua|Costa Rica,LC
+Mephitis_mephitis,5219380,Mephitis mephitis,CARNIVORA,MEPHITIDAE,Mephitis,mephitis,von Schreber,"Nearctic, Neotropic",Canada|United States|Mexico,LC
+Spilogale_angustifrons,2434825,Spilogale angustifrons,CARNIVORA,MEPHITIDAE,Spilogale,angustifrons,A. H. Howell,"Nearctic, Neotropic",Mexico|Guatemala|Belize|El Salvador|Honduras|Nicaragua|Costa Rica,LC
+Spilogale_gracilis,2434835,Spilogale gracilis,CARNIVORA,MEPHITIDAE,Spilogale,gracilis,Merriam,Nearctic,Canada|United States|Mexico,LC
+Spilogale_putorius,2434831,Spilogale putorius,CARNIVORA,MEPHITIDAE,Spilogale,putorius,Linnaeus,Nearctic,Canada|United States|Mexico,VU
+Spilogale_pygmaea,2434821,Spilogale pygmaea,CARNIVORA,MEPHITIDAE,Spilogale,pygmaea,O. Thomas,Nearctic,Mexico,VU
+Eira_barbara,2433716,Eira barbara,CARNIVORA,MUSTELIDAE,Eira,barbara,Linnaeus,"Nearctic, Neotropic",Mexico|Belize|Honduras|Guatemala|El Salvador|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Trinidad & Tobago|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Argentina,LC
+Galictis_cuja,5218901,Galictis cuja,CARNIVORA,MUSTELIDAE,Galictis,cuja,G. I. Molina,Neotropic,Brazil|Paraguay|Uruguay|Peru|Bolivia|Peru|Argentina|Chile,LC
+Galictis_vittata,5218906,Galictis vittata,CARNIVORA,MUSTELIDAE,Galictis,vittata,von Schreber,"Nearctic, Neotropic",Mexico|Belize|Guatemala|Honduras|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia,LC
+Lyncodon_patagonicus,2433691,Lyncodon patagonicus,CARNIVORA,MUSTELIDAE,Lyncodon,patagonicus,de Blainville,Neotropic,Argentina|Chile,LC
+Lontra_longicaudis,2433738,Lontra longicaudis,CARNIVORA,MUSTELIDAE,Lontra,longicaudis,Olfers,"Nearctic, Neotropic",Mexico|Belize|Guatemala|El Salvador|Honduras|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Trinidad & Tobago|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Uruguay|Argentina,NT
+Lontra_provocax,2433736,Lontra provocax,CARNIVORA,MUSTELIDAE,Lontra,provocax,O. Thomas,Neotropic,Argentina|Chile,EN
+Pteronura_brasiliensis,2433681,Pteronura brasiliensis,CARNIVORA,MUSTELIDAE,Pteronura,brasiliensis,E. A. W. Zimmermann,Neotropic,Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Argentina?|Uruguay?,EN
+Mustela_africana,5219066,Mustela africana,CARNIVORA,MUSTELIDAE,Mustela,africana,Desmarest,Neotropic,Colombia|Ecuador|Peru|Brazil,LC
+Mustela_felipei,5219069,Mustela felipei,CARNIVORA,MUSTELIDAE,Mustela,felipei,Izor & de la Torre,Neotropic,Colombia|Ecuador,VU
+Mustela_frenata,5218919,Mustela frenata,CARNIVORA,MUSTELIDAE,Mustela,frenata,Lichtenstein,"Nearctic, Neotropic",Canada|United States|Mexico|Belize|Guatemala|El Salvador|Honduras|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Ecuador|Peru|Brazil|Bolivia,LC
+Taxidea_taxus,2434102,Taxidea taxus,CARNIVORA,MUSTELIDAE,Taxidea,taxus,von Schreber,Nearctic,Canada|United States|Mexico,LC
+Bassaricyon_alleni,2433586,Bassaricyon alleni,CARNIVORA,PROCYONIDAE,Bassaricyon,alleni,O. Thomas,Neotropic,Colombia|Venezuela|Guyana|Ecuador|Peru|Brazil|Bolivia,LC
+Bassaricyon_gabbii,2433585,Bassaricyon gabbii,CARNIVORA,PROCYONIDAE,Bassaricyon,gabbii,J. A. Allen,Neotropic,Honduras|Nicaragua|Costa Rica|Panama,LC
+Bassaricyon_medius,8413918,Bassaricyon medius,CARNIVORA,PROCYONIDAE,Bassaricyon,medius,O. Thomas,Neotropic,Panama|Colombia|Ecuador,LC
+Bassaricyon_neblina,8365779,Bassaricyon neblina,CARNIVORA,PROCYONIDAE,Bassaricyon,neblina,"K. M. Helgen, C. M. Pinto, Kays, L. E. Helgen, Tsuchiya, Quinn, D. E. Wilson, & Maldonado",Neotropic,Colombia|Ecuador,NT
+Bassariscus_astutus,2433557,Bassariscus astutus,CARNIVORA,PROCYONIDAE,Bassariscus,astutus,Lichtenstein,Nearctic,United States|Mexico,LC
+Bassariscus_sumichrasti,2433551,Bassariscus sumichrasti,CARNIVORA,PROCYONIDAE,Bassariscus,sumichrasti,Saussure,"Nearctic, Neotropic",Mexico|Guatemala|Belize|El Salvador|Honduras|Nicaragua|Costa Rica|Panama,LC
+Nasua_narica,2433531,Nasua narica,CARNIVORA,PROCYONIDAE,Nasua,narica,Linnaeus,"Nearctic, Neotropic",United States|Mexico|Guatemala|Honduras|El Salvador|Nicaragua|Costa Rica|Panama|Colombia,LC
+Nasua_nasua,2433536,Nasua nasua,CARNIVORA,PROCYONIDAE,Nasua,nasua,Linnaeus,Neotropic,Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Argentina|Uruguay,LC
+Nasuella_olivacea,2433588,Nasuella olivacea,CARNIVORA,PROCYONIDAE,Nasuella,olivacea,J. E. Gray,Neotropic,Venezuela|Colombia|Ecuador,NT
+Potos_flavus,2433573,Potos flavus,CARNIVORA,PROCYONIDAE,Potos,flavus,von Schreber,"Nearctic, Neotropic",Mexico|Guatemala|Belize|El Salvador|Honduras|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia,LC
+Procyon_cancrivorus,9518324,Procyon cancrivorus,CARNIVORA,PROCYONIDAE,Procyon,cancrivorus,G. Cuvier,Neotropic,Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Trinidad & Tobago|Ecuador|Peru|Brazil|Bolivia|Paraguay|Uruguay|Argentina,LC
+Procyon_lotor,5218786,Procyon lotor,CARNIVORA,PROCYONIDAE,Procyon,lotor,Linnaeus,Nearctic,Canada|United States|Mexico|Guatemala|Belize|Honduras|El Salvador|Nicaragua|Costa Rica|Panama,LC
+Procyon_pygmaeus,5218818,Procyon pygmaeus,CARNIVORA,PROCYONIDAE,Procyon,pygmaeus,Merriam,Neotropic,Mexico,CR
+Tremarctos_ornatus,2433401,Tremarctos ornatus,CARNIVORA,URSIDAE,Tremarctos,ornatus,F. Cuvier,Neotropic,Venezuela|Colombia|Ecuador|Peru|Bolivia|Argentina?,VU
+Ursus_americanus,2433407,Ursus americanus,CARNIVORA,URSIDAE,Ursus,americanus,Pallas,Nearctic,Alaska|Canada|United States|Mexico,LC
+Atelocynus_microtis,2434454,Atelocynus microtis,CARNIVORA,CANIDAE,Atelocynus,microtis,P. L. Sclater,Neotropic,Bolivia|Brazil|Colombia|Ecuador|Peru,NT
+Canis_latrans,5219153,Canis latrans,CARNIVORA,CANIDAE,Canis,latrans,Say,"Nearctic, Neotropic",Alaska|Canada|United States|Mexico|Belize|Guatemala|Honduras|El Salvador|Nicaragua|Costa Rica|Panama,LC
+Canis_lupus,5219173,Canis lupus,CARNIVORA,CANIDAE,Canis,lupus,Linnaeus,"Nearctic, Palearctic",Portugal|Spain|France|Luxembourg|Belgium|Netherlands|Germany|Denmark|Switzerland|Liechtenstein|Italy|Austria|Czech Republic|Poland|Slovakia|Hungary|Slovenia|Croatia|Bosnia & Herzegovina|Serbia|Kosovo|Montenegro|Albania|North Macedonia|Greece|Bulgaria|Romania|Moldova|Ukraine|Belarus|Lithuania|Latvia|Estonia|Norway|Sweden|Finland|Russia|Georgia|Armenia|Azerbaijan|Turkey|Syria|Lebanon|Israel|Palestine|Jordan|Saudi Arabia|Qatar|United Arab Emirates|Oman|Yemen|Kuwait|Iraq|Iran|Turkmenistan|Uzbekistan|Kazakhstan|Kyrgyzstan|Tajikistan|Afghanistan|Pakistan|India|Nepal|Bhutan|Bangladesh?|Myanmar|China|Mongolia|North Korea|South Korea|Alaska|Canada|Greenland|United States|Mexico,LC
+Cerdocyon_thous,2434584,Cerdocyon thous,CARNIVORA,CANIDAE,Cerdocyon,thous,Linnaeus,Neotropic,Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Brazil|Bolivia|Paraguay|Uruguay|Argentina,LC
+Chrysocyon_brachyurus,2434450,Chrysocyon brachyurus,CARNIVORA,CANIDAE,Chrysocyon,brachyurus,Illiger,Neotropic,Brazil|Paraguay|Bolivia|Peru|Uruguay|Argentina,NT
+Lycalopex_culpaeus,2434340,Lycalopex culpaeus,CARNIVORA,CANIDAE,Lycalopex,culpaeus,G. I. Molina,Neotropic,Colombia|Ecuador|Peru|Bolivia|Chile|Argentina,LC
+Lycalopex_fulvipes,2434330,Lycalopex fulvipes,CARNIVORA,CANIDAE,Lycalopex,fulvipes,W. Martin,Neotropic,Chile,EN
+Lycalopex_griseus,2434328,Lycalopex griseus,CARNIVORA,CANIDAE,Lycalopex,griseus,J. E. Gray,Neotropic,Bolivia|Argentina|Chile|Peru?,LC
+Lycalopex_gymnocercus,2434333,Lycalopex gymnocercus,CARNIVORA,CANIDAE,Lycalopex,gymnocercus,G. Fischer,Neotropic,Brazil|Bolivia|Paraguay|Uruguay|Argentina,LC
+Lycalopex_sechurae,2434326,Lycalopex sechurae,CARNIVORA,CANIDAE,Lycalopex,sechurae,O. Thomas,Neotropic,Peru|Ecuador,NT
+Lycalopex_vetulus,2434331,Lycalopex vetulus,CARNIVORA,CANIDAE,Lycalopex,vetulus,Lund,Neotropic,Brazil,NT
+Speothos_venaticus,2434444,Speothos venaticus,CARNIVORA,CANIDAE,Speothos,venaticus,Lund,Neotropic,Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Argentina,NT
+Urocyon_cinereoargenteus,2434566,Urocyon cinereoargenteus,CARNIVORA,CANIDAE,Urocyon,cinereoargenteus,von Schreber,"Nearctic, Neotropic",Canada|United States|Mexico|Belize|Guatemala|Honduras|El Salvador|Nicaragua|Costa Rica|Panama|Colombia|Venezuela,LC
+Vulpes_macrotis,5219311,Vulpes macrotis,CARNIVORA,CANIDAE,Vulpes,macrotis,Merriam,Nearctic,United States|Mexico,LC
+Herpailurus_yagouaroundi,2435146,Herpailurus yagouaroundi,CARNIVORA,FELIDAE,Herpailurus,yagouaroundi,É. Geoffroy Saint-Hilaire,"Nearctic, Neotropic",United States?|Mexico|Guatemala|El Salvador|Belize|Honduras|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Uruguay|Argentina|Uruguay?,LC
+Leopardus_braccatus,2434927,Leopardus braccatus,CARNIVORA,FELIDAE,Leopardus,braccatus,Cope,Neotropic,Brazil|Paraguay|Bolivia|Argentina,NA
+Leopardus_colocola,2434919,Leopardus colocola,CARNIVORA,FELIDAE,Leopardus,colocola,G. I. Molina,Neotropic,Chile,NT
+Leopardus_emiliae,NA,Leopardus emiliae,CARNIVORA,FELIDAE,Leopardus,emiliae,O. Thomas,Neotropic,Brazil,NA
+Leopardus_garleppi,NA,Leopardus garleppi,CARNIVORA,FELIDAE,Leopardus,garleppi,Matschie,Neotropic,Colombia?|Ecuador|Peru|Bolivia|Chile|Argentina,NA
+Leopardus_geoffroyi,2434942,Leopardus geoffroyi,CARNIVORA,FELIDAE,Leopardus,geoffroyi,d’Orbigny & P. Gervais,Neotropic,Bolivia|Brazil|Paraguay|Uruguay|Argentina|Chile,LC
+Leopardus_guigna,2434923,Leopardus guigna,CARNIVORA,FELIDAE,Leopardus,guigna,G. I. Molina,Neotropic,Chile|Argentina,VU
+Leopardus_guttulus,7740958,Leopardus guttulus,CARNIVORA,FELIDAE,Leopardus,guttulus,Hensel,Neotropic,Brazil|Paraguay|Argentina,VU
+Leopardus_jacobita,2434979,Leopardus jacobita,CARNIVORA,FELIDAE,Leopardus,jacobita,Cornalia,Neotropic,Peru|Bolivia|Argentina|Chile,EN
+Leopardus_munoai,NA,Leopardus munoai,CARNIVORA,FELIDAE,Leopardus,munoai,Ximénez,Neotropic,Brazil|Uruguay|Argentina,NA
+Leopardus_pajeros,2434935,Leopardus pajeros,CARNIVORA,FELIDAE,Leopardus,pajeros,Desmarest,Neotropic,Argentina|Chile,NA
+Leopardus_pardalis,2434982,Leopardus pardalis,CARNIVORA,FELIDAE,Leopardus,pardalis,Linnaeus,Neotropic,United States|Mexico|Guatemala|Belize|Honduras|El Salvador|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Argentina,LC
+Leopardus_tigrinus,2434930,Leopardus tigrinus,CARNIVORA,FELIDAE,Leopardus,tigrinus,von Schreber,Neotropic,Costa Rica|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia,VU
+Leopardus_wiedii,2434950,Leopardus wiedii,CARNIVORA,FELIDAE,Leopardus,wiedii,Schinz,Neotropic,United States?|Mexico|Guatemala|Belize|El Salvador|Honduras|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Bolivia|Brazil|Paraguay|Uruguay|Argentina,NT
+Lynx_rufus,2435246,Lynx rufus,CARNIVORA,FELIDAE,Lynx,rufus,von Schreber,Nearctic,Canada|United States|Mexico,LC
+Puma_concolor,2435099,Puma concolor,CARNIVORA,FELIDAE,Puma,concolor,Linnaeus,"Nearctic, Neotropic",Canada|United States|Mexico|Belize|Guatemala|Honduras|El Salvador|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Uruguay?|Chile|Argentina,LC
+Panthera_onca,5219426,Panthera onca,CARNIVORA,FELIDAE,Panthera,onca,Linnaeus,"Nearctic, Neotropic",United States|Mexico|Guatemala|Belize|Honduras|El Salvador?|Nicaragua|Costa Rica|Panama|Colombia|Venezuela|Guyana|Suriname|French Guiana|Ecuador|Peru|Brazil|Bolivia|Paraguay|Argentina|Uruguay?,NT

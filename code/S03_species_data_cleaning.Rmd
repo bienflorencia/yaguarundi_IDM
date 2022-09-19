@@ -1,0 +1,572 @@
+---
+title: "Species data cleaning"
+author: "Florencia Grattarola"
+date: "30/04/2022"
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+    toc_float: yes
+    highlight: pygments
+    theme: flatly
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dpi=200, echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r libraries}
+library(patchwork)
+library(rnaturalearth)
+library(countrycode)
+library(lubridate)
+library(tmap)
+library(leaflet)
+library(terra)
+library(sf)
+sf::sf_use_s2(FALSE)
+library(tidyverse)
+```
+
+# Basemaps
+
+```{r basemaps}
+# world and Latin America
+world <- rnaturalearth::ne_countries(scale = 'large', returnclass = 'sf')
+bbox_Latam_unprojected <- c(xmin=-118.40137, ymin=-55.89170, xmax=-34.80547, ymax= 32.71533)
+Latam_unprojected <- world %>% st_crop(bbox_Latam_unprojected)
+
+# equal area projection (Equatorial Lambert azimuthal equal-area) 
+equalareaCRS <-  '+proj=laea +lon_0=-73.125 +lat_0=0 +datum=WGS84 +units=m +no_defs'
+Latam_projected <-st_read('data/Latam_vector.shp')
+Latam_countries <- sf::st_read('data/Latam_vector_countries.shp', quiet = T) %>% sf::st_transform(crs=equalareaCRS)
+Latam <- st_union(st_make_valid(Latam_projected))
+
+# raster of Latin America to use as template
+# dimension of raster layers 100km^2 (100000m^2)
+Latam.raster <- terra::rast('data/Latam_raster.tif')
+
+# species list
+# SOURCE: Mammal Diversty Database AMS
+speciesList_MDD <- read_csv('data/MDD_Carnivora_List.csv') 
+
+# example species selected
+selectedSpecies <- c('Leopardus geoffroyi', 
+                     'Herpailurus yagouaroundi', 
+                     'Lontra longicaudis', 
+                     'Tremarctos ornatus', 
+                     'Cerdocyon thous', 
+                     'Eira barbara')
+```
+
+```{r}
+# IUCN range distribution
+yaguarundi_IUCN <- sf::st_read('data/yaguarundi_IUCN.shp', quiet = T) %>% sf::st_transform(crs=equalareaCRS)
+
+MAP.IUCN <- tm_graticules(alpha = 0.3) + 
+    tm_shape(Latam_countries) +
+    tm_fill(col='grey90') + 
+    tm_borders(col='grey60', alpha = 0.4) + 
+    tm_shape(yaguarundi_IUCN) + 
+    tm_fill(col='grey20', alpha = 0.4) +
+    tm_layout(legend.outside = T, frame.lwd = 0.3, scale=1.2, legend.outside.size = 0.1)
+
+MAP.IUCN
+# tmap_save(MAP.IUCN, filename='docs/figs/MAP.IUCN.svg', dpi=300, height = 7, width = 6, device = svglite::svglite)
+
+```
+
+
+# Data
+
+## Presence/absence and abundance data
+
+Terms standardised:  
+- recordID  
+- species  
+- temporalSpan  
+- yearEnd  
+- decimalLatitude  
+- decimalLongitude  
+- area_ha (study area)  
+- area_m2  
+- countryCode  
+- stateProvince  
+- locality  
+- presence  
+- abundance  
+- effort  
+- effortUnit  
+- dataset  
+
+```{r pa}
+pointsAndSurveys_NeotropCarnivores <- 
+  read_csv('data/NEOTROPICAL_CARNIVORES_DATASET_2020-04.csv',
+           guess_max = 90000) # Neotropical carnivores Data Paper
+
+data_PA_Ab <- 
+  pointsAndSurveys_NeotropCarnivores %>% 
+  # filter the records to include only the Neotropical Mammals
+  filter(SPECIES %in% speciesList_MDD$sp) %>% 
+  # filter only the records taken with camera traps -> assumption: these will reflect presence-absece data 
+  filter(METHOD=='Camera trap') %>% 
+  # filter records with no coordinates
+  filter(!is.na(LAT_Y)) %>%
+  # filter occurrences that don't have month and year when they were recorded
+  filter(!is.na(COL_END_YR)&!is.na(COL_START_MO)&!is.na(COL_END_MO)&!is.na(COL_START_YR)) %>%
+  # one area has a range instead of a value, I took the mean of the range as area
+  mutate(AREA_HA=ifelse(AREA_HA=='700-1000', mean(c(700, 1000)), AREA_HA)) %>% 
+  # filter records with no area of study recorded / or with sampling level area and precision recorded
+  filter(!is.na(AREA_HA) | (is.na(AREA_HA) & !is.na(PRECISION_m) & SAMPLING_LEVEL=='AREA')) %>% 
+  mutate(area_ha=as.numeric(AREA_HA),
+         area_m2=ifelse(!is.na(AREA_HA), 
+                          area_ha*10000, # 1 hectare are 10000 meters / will be used for buffers
+                          PRECISION_m)) %>% 
+  # to have the same values as the presence-only I kept country codes
+  mutate(countryCode=countrycode::countrycode(COUNTRY, 
+                                              origin = 'country.name', 
+                                              destination = 'iso2c')) %>% 
+  # since the dataset has no day, dates were assumed to start and end the first day of the month
+  mutate(date_start=lubridate::dmy(str_c('1', COL_START_MO, COL_START_YR))) %>% 
+  mutate(date_end=lubridate::dmy(str_c('1', COL_END_MO, COL_END_YR))) %>% 
+  # the temporal span was calculated -> there are errors in some dates, and the temporal span is negative
+  mutate(temporalSpan=ifelse(date_end-date_start<0, date_start-date_end, date_end-date_start)) %>% 
+  # decimal places for some records corrected
+  mutate(EFFORT=ifelse(grepl('\\.', EFFORT) & (temporalSpan>=31 | temporalSpan>=30), 
+                       str_remove(EFFORT, '\\.' ), EFFORT)) %>% 
+  # the sampling effort was standardized to days
+  mutate(samplingEffort=ifelse(grepl('hours', EFFORT_UNIT, ignore.case = T), as.numeric(EFFORT)/24, 
+                               ifelse(grepl('days', EFFORT_UNIT, ignore.case = T), as.numeric(EFFORT), NA))) %>% 
+  # filter those without sampling effort (no data was provided and it cannot be derived)
+  filter(!is.na(samplingEffort)) %>% 
+  mutate(effortUnit='days') %>% 
+  # calculate the number of camera traps needed 
+  mutate(numCameras=floor(samplingEffort/temporalSpan)) %>% 
+  # filter unreliable values 
+  mutate(temporalSpan=ifelse(numCameras==Inf & temporalSpan==0 & samplingEffort>31, NA, 
+                             ifelse(numCameras==Inf & temporalSpan==0 & samplingEffort<=31, 
+                                    floor(as.numeric(EFFORT)), temporalSpan))) %>% 
+  filter(!is.na(temporalSpan)) %>% 
+  mutate(independentLocation=str_c(LAT_Y,':',LONG_X)) %>% 
+  mutate(independentYearSpan=str_c(COL_START_YR,':',COL_END_YR)) %>% 
+  #mutate(yearEnd=lubridate::year(date_end)) %>% 
+  dplyr::select(recordID=ID,
+                date_start, date_end,
+         species=SPECIES,
+         temporalSpan,
+         #yearEnd,
+         independentLocation,
+         independentYearSpan,
+         decimalLatitude=LAT_Y,
+         decimalLongitude=LONG_X, 
+         area_ha,
+         area_m2,
+         countryCode,
+         stateProvince=STATE,
+         locality=SITE,
+         presence=OCCUR,
+         abundance=N_RECORDS, # not all of the records have abundance data
+         effort=samplingEffort,
+         effortUnit,
+         dataset=DATASET)%>% 
+  mutate(dataset='pointsAndSurveys_NeotropCarnivores') # in total 34,389 records
+
+# Generate 0 (zeros) for locations where the species hasn't been recorded
+# this can very probably be done in a more efficient way, but this one works!
+data_PA_Ab_0 <- data_PA_Ab %>% 
+  pivot_wider(names_from = species,
+              values_from = c(presence, abundance, effort),
+              values_fill = c(list(presence=0), 
+                              list(abundance=0),
+                              list(effort=0))) %>%
+  pivot_longer(cols=starts_with(c('presence_', 'abundance_', 'effort_')),
+               names_to=c('metric', 'species'),
+               names_sep='_') %>% 
+  pivot_wider(names_from = metric,
+              values_from = value,
+              values_fill = c(list(value=0))) %>% 
+  distinct(species, independentYearSpan, independentLocation, presence, .keep_all = T) %>%
+  group_by(species, independentYearSpan, independentLocation) %>% 
+  mutate(presence=sum(presence, na.rm = T),
+         abundance=sum(abundance, na.rm = T),
+         effort=max(effort, na.rm = T)) %>% 
+  distinct(species, independentYearSpan, independentLocation, .keep_all = T) %>% 
+  ungroup() %>% group_by(independentLocation, independentYearSpan) %>% 
+  mutate(effort=max(effort, na.rm = T)) %>% 
+  ungroup()
+
+```
+
+## Presence-only data
+
+Terms standardised:  
+- recordID,  
+- species,  
+- year,  
+- eventDate,  
+- decimalLatitude,  
+- decimalLongitude,  
+- countryCode, 
+- stateProvince,  
+- locality,   
+- dataset  
+
+```{r po}
+# The data download and cleaning can be found in the GBIF_download.R script
+occurrencePoints_GBIF <- read_csv('data/0046613-210914110416597_CLEAN.csv', 
+                                  guess_max = 120000) # GBIF data (cleaned)
+
+data_PO <- 
+  occurrencePoints_GBIF %>% 
+  # rename the species yaguarundi for GBIF data 
+  mutate(species=ifelse(species=='Puma yagouaroundi', 'Herpailurus yagouaroundi', species)) %>% 
+  # filter records from unrealistic or unwanted) locations: Japan, USA and Canada
+  filter(countryCode!='JP' & countryCode!='US' & countryCode!='CA') %>%
+  # filter occurrences that don't have the year when they were recorded
+  filter(!is.na(year) & year<=2020) %>%
+  # transform eventdate to class datetime
+  mutate(eventDate=lubridate::ymd_hms(eventDate)) %>% 
+  # remove duplicates according to species, date, latitude and longitude
+  group_by(species, eventDate, decimalLatitude, decimalLongitude) %>% 
+  slice_head(n=1) %>% ungroup() %>% 
+  # select columns of interest
+  dplyr::select(recordID=gbifID, 
+         species, 
+         year, eventDate,  
+         decimalLatitude, 
+         decimalLongitude,
+         countryCode,
+         stateProvince,
+         locality) %>% 
+  mutate(dataset='occurrencePoints_GBIF') 
+```
+
+## Check data for each years on example species
+```{r temporal.break}
+# Presence-only
+data_PO %>% filter(species == 'Herpailurus yagouaroundi') %>% filter(year>=2000) %>% 
+  mutate(period=ifelse(year<=2014, 'pre2014', 'post2014')) %>%
+  group_by(species, period) %>% count()
+
+# Presence-absence
+data_PA_Ab_0 %>% filter(species %in% selectedSpecies & presence ==1) %>% 
+  mutate(period=ifelse(year(date_start)<=2014, 'pre2014', 'post2014')) %>%
+  group_by(species, period) %>% count()
+```
+
+# Transform data for the model integration
+
+## Presence-absence data
+To assess the presences and absences we created a buffer area around the study location according to the area reported. Then we combined the overlapping buffers into **blobs**.
+
+Notes from **Nagy-Reis et al. (2020)**: For data labeled as SAMPLING_LEVEL= AREA, the PRECISION_m field could be used to get a sense of the study area: Page 45: "The centroid data are identified by having "AREA" in the 'SAMPLING_LEVEL' attribute, which indicates that the exact location is unknown and its precision reflects the size of study area ('AREA_HA')." But if SAMPLING_LEVEL = UNIT, then PRECISION_m no longer informs on area size, it simply informs on the precision of the method used to collect the coordinate and I would personally not recommend using PRECISION_m in that case.
+
+
+### Create **blobs**.
+
+Blobs contain data on total effort, total temporal span, a list of the records IDs that are included for the blob and an area size of the combined areas.
+
+```{r blobs, eval=T, message=F, warning=F}
+data_PA_Ab_0_GIS <- data_PA_Ab_0 %>% 
+  filter(species == 'Herpailurus yagouaroundi') %>% 
+  mutate(year=lubridate::year(date_end)) %>% 
+  filter(year>=2000, year<=2021) %>% 
+  as.data.frame() %>% 
+  sf::st_as_sf(coords=c('decimalLongitude', 'decimalLatitude')) %>% 
+  st_set_crs(4326) 
+
+PA <- st_transform(data_PA_Ab_0_GIS, crs=equalareaCRS)
+
+# create a blob for all sites
+# blobs are definded as areas where some sampling was done over the entire period
+periodStart <- ymd('2000-01-01')
+periodEnd <- ymd('2014-01-01')
+periodMax <- ymd('2020-12-31')
+
+PA_allsites <- PA %>%
+  mutate(start_date=as_date(ifelse(date_end-date_start<0, date_end, date_start)),
+         end_date=as_date(ifelse(date_end-date_start<0, date_start, date_end))) %>%
+  mutate(span=interval(date_start, date_end),
+         target= interval(periodEnd, today()),
+         period=ifelse(span %within% target, 'pos', 'pre')) %>% 
+  distinct(independentLocation, period, .keep_all = T) 
+
+PA_allsites_buff <- st_buffer(PA_allsites, sqrt(PA_allsites$area_m2/pi))
+
+blobs_pre <- PA_allsites_buff %>% filter(period=='pre') %>% 
+  st_union() %>% st_cast('POLYGON') %>% st_sf('ID'= 1:length(.)) 
+blobs_pos <- PA_allsites_buff %>% filter(period=='pos') %>% 
+  st_union() %>% st_cast('POLYGON') %>% st_sf('ID'= 1:length(.)) 
+
+
+# to calculate the effort in days for each blob, we need to differenciate the two periods
+PA_allsites_effort_and_time  <- PA %>%
+  mutate(start_date=as_date(ifelse(date_end-date_start<0, date_end, date_start)),
+         end_date=as_date(ifelse(date_end-date_start<0, date_start, date_end))) %>%
+  mutate(span=interval(date_start, date_end),
+         target= interval(periodEnd, today()),
+         period=ifelse(span %within% target, 'pos', 'pre')) %>% 
+  group_by(independentLocation, independentYearSpan, area_m2) %>%
+  summarise(effort=max(effort),
+            period=paste(unique(period)),
+            recordIDs=paste(unique(recordID), collapse = ';'),
+            maxEndDate=max(end_date),
+            minStartDate=min(start_date)) %>% 
+  mutate(maxTemporalSpan= maxEndDate-minStartDate)
+
+# to calculate the effort in days for each blob, we need to differenciate the two periods
+blobs_efforttime_pre <- st_join(blobs_pre, 
+                            PA_allsites_effort_and_time %>% filter(period=='pre'),
+                            left=TRUE)  %>% 
+  group_by(ID) %>% 
+  summarise(effort=sum(effort),
+            temporalSpan=sum(maxTemporalSpan),
+            recordIDs=paste(unique(recordIDs), collapse = ';')) %>% 
+  mutate(blobArea=st_area(.)) 
+
+
+blobs_efforttime_pos <- st_join(blobs_pos, 
+                                PA_allsites_effort_and_time %>% filter(period=='pos'),
+                                left=TRUE)  %>% 
+  group_by(ID) %>% 
+  summarise(effort=sum(effort),
+            temporalSpan=sum(maxTemporalSpan),
+            recordIDs=paste(unique(recordIDs), collapse = ';')) %>% 
+  mutate(blobArea=st_area(.))
+
+```
+
+The data for the selected species
+
+```{r PArasters, eval=T, message=F, warning=F, out.width='100%'}
+# function  to create blobs for pre and pos 2010 for each species
+calculate_PA_sp_blobs <- function(PA, blobs, sp, prepos){
+  periodStart <- ymd('2000-01-01')
+  periodEnd <- ymd('2014-01-01')
+  df_period <- PA %>% filter(species==sp & presence==1) %>% 
+    filter(date_start>=periodStart) %>% 
+    mutate(span=interval(date_start, date_end),
+           target= interval(periodEnd, today()),
+           period=ifelse(span %within% target, 'pos', 'pre')) %>% 
+    filter(period==prepos) %>% select(species, presence)
+  
+  df_period_blobs <- st_join(blobs, df_period,
+                             left=TRUE, join = st_contains) %>%
+    group_by(ID) %>% 
+    summarise(presence=max(presence),
+              temporalSpan=max(temporalSpan),
+              effort=max(effort),
+              blobArea=max(blobArea)) %>% 
+    mutate(presence=ifelse(is.na(presence), 0, presence))
+  return(df_period_blobs)
+}
+
+# Herpailurus yagouaroundi
+PA_herpailurus_pre_blobs <- calculate_PA_sp_blobs(PA, blobs_efforttime_pre, 'Herpailurus yagouaroundi', 'pre')
+PA_herpailurus_pos_blobs <- calculate_PA_sp_blobs(PA, blobs_efforttime_pos, 'Herpailurus yagouaroundi', 'pos')
+```
+
+### Quick check
+
+```{r quick.blob.check, message=F, warning=F}
+# quick look un how data is summarised
+st_join(blobs_efforttime_pos, PA %>% filter(species=='Herpailurus yagouaroundi' & presence==1) %>% 
+    mutate(span=interval(date_start, date_end),
+           target= interval(ymd('2014-01-01'), today()),
+           period=ifelse(span %within% target, 'pos', 'pre')) %>% 
+    filter(period=='pos') %>% select(species, presence),
+    left=TRUE, join = st_contains) %>%
+    group_by(ID) %>% 
+    summarise(presence=max(presence),
+              temporalSpan=max(temporalSpan),
+              effort=max(effort),
+              blobArea=max(blobArea)) %>% 
+    mutate(presence=ifelse(is.na(presence), 0, presence)) %>% head()
+```
+
+## Presence-only data
+
+```{r POrasters, message=F, warning=F, out.width='100%'}
+# rasterisation of the presence-only data
+data_PO_GIS <- data_PO %>% 
+  filter(species == 'Herpailurus yagouaroundi') %>% 
+  mutate(year=lubridate::year(eventDate)) %>% 
+  filter(year>=2000, year<=2021) %>% 
+  as.data.frame() %>% 
+  sf::st_as_sf(coords=c('decimalLongitude', 'decimalLatitude')) %>% 
+  st_set_crs(4326) 
+
+PO <- st_transform(data_PO_GIS, crs=equalareaCRS)
+
+# functions to create presence-only rasters for pre and pos 2014 fo each species
+calculate_PO_sp_period_raster <- function(PO, sp, raster, prepos){
+  periodStart <- 2000
+  periodEnd <- 2014
+  df_period <- PO %>% filter(species==sp & !is.na(year)) %>% 
+    filter(year>=periodStart) %>% 
+    mutate(period=ifelse(year>=periodEnd , 'pos', 'pre'),
+           occurrence=1) %>% filter(period==prepos)
+  df_period_raster <- terra::rasterize(x = vect(df_period),
+                                       y = raster,
+                                       field = 'occurrence',
+                                       fun = 'length',
+                                       sum = T, background=0) %>% mask(., raster)
+  
+  df_country_raster <- terra::rasterize(x = vect(df_period),
+                                       y = raster,
+                                       field = 'countryCode',
+                                       fun = 'first') %>% mask(., raster)
+  
+  names(df_period_raster) <- 'count'
+  names(df_country_raster) <- 'country'
+  df_raster <- c(df_period_raster, df_country_raster)
+  return(df_raster)
+}
+
+# Herpailurus yagouaroundi
+PO_herpailurus_pre_raster <- calculate_PO_sp_period_raster(PO, 'Herpailurus yagouaroundi', Latam.raster, 'pre')
+PO_herpailurus_pos_raster <- calculate_PO_sp_period_raster(PO, 'Herpailurus yagouaroundi', Latam.raster, 'pos')
+```
+
+
+## Data visualisation
+
+### Manuscript plots
+
+```{r data_PA.plots, out.width = '100%'}
+# plot presence-absence data
+data_PA_pre_pos <- rbind(PA_herpailurus_pre_blobs %>% mutate(period='pre'), 
+                         PA_herpailurus_pos_blobs %>% mutate(period='pos'))
+
+gg_PA_pre <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PA_pre_pos %>% filter(period=='pre'), 
+            aes(fill=factor(presence), col=factor(presence)), size=1, show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    scale_fill_manual(values = c("#474545","#E31A1C"))+
+    scale_color_manual(values = c("#474545","#E31A1C")) +
+    labs(title='PA', subtitle='pre: 2000-2013', col='') +
+    theme_bw() +    
+    theme(text=element_text(size = 14)) 
+
+gg_PA_pos <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PA_pre_pos %>% filter(period=='pos'), 
+            aes(fill=factor(presence), col=factor(presence)), size=1, show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    scale_fill_manual(values = c("#434445","#1F78B4"))+
+    scale_color_manual(values = c("#434445","#1F78B4")) +
+    labs(title='', subtitle='pos: 2014 to 2021', col='') +
+    theme_bw() +    
+    theme(text=element_text(size = 14)) 
+
+gg_PA_pre + gg_PA_pos
+
+# gg_PA <- gridExtra::grid.arrange(gg_PA_pre, gg_PA_pos, nrow=1)
+# ggsave(plot = gg_PA, filename='docs/figs/presence-absence-plots.svg', device = 'svg', width=10, height=7, dpi=300)
+
+```
+
+```{r data_PO.plots, out.width = '100%'}
+data_PO_pre_pos <- data_PO_GIS %>% 
+  mutate(period=ifelse(year>=2014 , 'pos', 'pre'), occurrence=1) 
+
+gg_PO_pre <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PO_pre_pos %>% filter(period=='pre'), col="#E31A1C", size=0.5, show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    labs(title='PO pre: 2000-2013', col='') +
+    theme_bw() +
+    theme(text=element_text(size = 14))
+
+gg_PO_pos <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PO_pre_pos %>% filter(period=='pos'), col="#1F78B4", size=0.5, show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    labs(title='PO post: 2014 to 2021', col='') +
+    theme_bw() +
+    theme(text=element_text(size = 14))
+    
+gg_PO_pre + gg_PO_pos
+
+# gg_PO <- gridExtra::grid.arrange(gg_PO_pre, gg_PO_pos, nrow=1)
+# ggsave(plot = gg_PO, filename='docs/figs/presence-only-plots.svg', device = 'svg', width=10, height=7, dpi=300)
+```
+
+### Interactive plot
+
+Species *Herpailurus yagouaroundi*, POST period (2014-2020).
+Blobs of presence/absence and presence-only records.  
+
+```{r leaflet, eval=T, echo=F, out.height= '50%'}
+dateLimit <- ymd('2014-01-01')
+
+PA_herpailurus <- PA %>% filter(species=='Herpailurus yagouaroundi' & presence==1) %>% 
+    mutate(span=interval(date_start, date_end),
+           target= interval(dateLimit, today()),
+           period=ifelse(span %within% target, 'pos', 'pre')) %>% 
+    filter(period=='pos') %>% select(species, presence)
+
+yearLimit <- 2014
+PO_herpailurus <- PO %>% filter(species=='Herpailurus yagouaroundi') %>%
+  filter(year>=yearLimit) %>% mutate(occurrence=1)
+
+pal <- colorFactor(palette = c('red', 'white'), 
+                   levels = c(0, 1))
+
+PA_herpailurus %>% 
+  st_transform(4326) %>% 
+  leaflet() %>%
+  clearBounds() %>%
+  addTiles(group = "Open Street Map") %>%
+  addProviderTiles(providers$OpenTopoMap,
+                   options = providerTileOptions(noWrap = TRUE),
+                   group = 'Open Topo Map') %>%
+  addProviderTiles(providers$Esri.WorldImagery,
+                   options = providerTileOptions(noWrap = TRUE),
+                   group = 'Imagen') %>% 
+  addPolygons(
+    weight = 5,
+    data = st_transform(PA_herpailurus_pos_blobs, 4326), #st_union(PA_herpailurus_buff, by_feature = T) 
+    color = ~pal(presence),
+    popup = ~paste0("<strong>blobID: </strong>", ID, "</br>",
+                     "<strong>Temporal span (days): </strong>", temporalSpan,  "</br>",
+                    "<strong>Effort (days): </strong>", effort,  "</br>",
+                     "<strong>Area (km2): </strong>", round(blobArea/1000000,2)),#'white',
+    fillOpacity = 0.5) %>% 
+  addCircles(
+    fillOpacity = 1,
+    popup = ~paste0("<strong>species: </strong>", species, "</br>")) %>% 
+  addCircles(
+    fillOpacity = 1,
+    color ='black',
+    data = st_transform(PO_herpailurus, 4326),
+    popup = ~paste0("<strong>recordID: </strong>", recordID, "</br>",
+                     "<strong>Location: </strong>", geometry,  "</br>",
+                     "<strong>Dataset: </strong>", dataset))
+```
+
+In red the blobs (polygons) where the species is absent, in white where the species is present. 
+Blue dots are the lat/long locations of each study where the species was present. Black dots are presence-only records.
+
+# Save data
+
+```{r save.data, eval=F}
+# blobs
+saveRDS(blobs_efforttime_pre, 'data/blobs_pre.Rds')
+saveRDS(blobs_efforttime_pos, 'data/blobs_pos.Rds')
+
+# presence-only rasters
+terra::writeRaster(PO_herpailurus_pre_raster, 'data/PO_herpailurus_pre_raster.tif', overwrite=T)
+terra::writeRaster(PO_herpailurus_pos_raster, 'data/PO_herpailurus_pos_raster.tif', overwrite=T)
+
+# presences/absences blobs / polygons
+saveRDS(PA_herpailurus_pre_blobs, 'data/PA_herpailurus_pre_blobs.Rds')
+saveRDS(PA_herpailurus_pos_blobs, 'data/PA_herpailurus_pos_blobs.Rds')
+
+```
