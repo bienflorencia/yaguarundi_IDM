@@ -93,7 +93,7 @@ The `fitted.model` is an object of class `rjags`. For details on how it was gene
 
 
 ```r
-fitted.model <- readRDS('data/yaguarundi_model_fit.rds')
+fitted.model <- readRDS('data/yaguarundi_model_fit2.rds')
 
 # as.mcmc.rjags converts an rjags Object to an mcmc or mcmc.list Object.
 fitted.model.mcmc <- mcmcplots::as.mcmc.rjags(fitted.model)
@@ -718,6 +718,37 @@ pp.PO + pp.PO.log
 ```
 
 ![](S2_evaluate_model_outputs_files/figure-html/posterior.predictive.PO-1.png)<!-- -->
+
+```r
+# pp_PO <- gridExtra::grid.arrange(pp.PO, pp.PO.log, nrow=1)
+# ggsave(plot = pp_PO, filename='docs/figs/presence-only-posterior-checks.svg', device = 'svg', width=10, height=7, dpi=300)
+```
+
+Residual Diagnostics
+
+
+```r
+library(DHARMa)
+
+simulations <- fitted.model$BUGSoutput$sims.list$y.PO.new
+pred <- apply(fitted.model$BUGSoutput$sims.list$lambda, 2, median)
+dim(simulations)
+```
+
+```
+## [1] 27000  4366
+```
+
+```r
+sim <- createDHARMa(simulatedResponse = t(simulations),
+                    observedResponse = PO_pre_post$count,
+                    fittedPredictedResponse = pred,
+                    integerResponse = T)
+
+plotSimulatedResiduals(sim)
+```
+
+![](S2_evaluate_model_outputs_files/figure-html/residual.diagnostics.PO-1.png)<!-- -->
 
 ### PA
 

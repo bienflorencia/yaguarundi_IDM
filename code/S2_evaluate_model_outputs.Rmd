@@ -91,7 +91,7 @@ PO_pre_post <- rbind(PO_pre %>% mutate(time=0), PO_post %>% mutate(time=1))
 The `fitted.model` is an object of class `rjags`. For details on how it was generated see the code at `code/yaguarundi_IDM_run.Rmd`.  
 
 ```{r diagnostics}
-fitted.model <- readRDS('data/yaguarundi_model_fit.rds')
+fitted.model <- readRDS('data/yaguarundi_model_fit2.rds')
 
 # as.mcmc.rjags converts an rjags Object to an mcmc or mcmc.list Object.
 fitted.model.mcmc <- mcmcplots::as.mcmc.rjags(fitted.model)
@@ -580,6 +580,23 @@ pp.PO + pp.PO.log
 
 # pp_PO <- gridExtra::grid.arrange(pp.PO, pp.PO.log, nrow=1)
 # ggsave(plot = pp_PO, filename='docs/figs/presence-only-posterior-checks.svg', device = 'svg', width=10, height=7, dpi=300)
+```
+
+Residual Diagnostics
+
+```{r residual.diagnostics.PO}
+library(DHARMa)
+
+simulations <- fitted.model$BUGSoutput$sims.list$y.PO.new
+pred <- apply(fitted.model$BUGSoutput$sims.list$lambda, 2, median)
+dim(simulations)
+
+sim <- createDHARMa(simulatedResponse = t(simulations),
+                    observedResponse = PO_pre_post$count,
+                    fittedPredictedResponse = pred,
+                    integerResponse = T)
+
+plotSimulatedResiduals(sim)
 ```
 
 ### PA
