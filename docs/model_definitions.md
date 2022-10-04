@@ -15,7 +15,7 @@ output:
 
 # DAG
 
-![DAG](docs/figs/DAG.png)
+![DAG](/docs/figs/DAG.png)
 
 # Definitions (variables and parameters)
 
