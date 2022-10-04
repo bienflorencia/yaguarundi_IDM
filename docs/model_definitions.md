@@ -209,32 +209,25 @@ output:
 ## Posterior predictive checks
 
  - Presence-Absence (PA) data 
- 
-  fit assessments: Tjur R-Squared (fit statistic for logistic regression)
-  **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   # replicate (new) data set  
-  **Equation:**
-  **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`  
-  **Equation:**
-  **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`  
-  **Equation:**
   
-  discrepancy measures for entire PA data set
-  **JAGS code:** `pres.n <- sum(y.PA.new[] > 0)`  
-  **Equation:**
+  fit assessments: Tjur R-Squared (fit statistic for logistic regression)
+  **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   # replicate (new) data set   
+  **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`   
+  **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`   
+  
+  discrepancy measures for entire PA data set  
+  **JAGS code:** `pres.n <- sum(y.PA.new[] > 0)`    
   **JAGS code:** `absc.n <- sum(y.PA.new[] == 0)`   
-  **Equation:**
   **JAGS code:** `r2_tjur <- abs(sum(pres[])/pres.n - sum(absc[])/absc.n)`  
-  **Equation:**
 
  - Presence-Only (PO) data
  
-  discrepancy measures for entire data set
-  **JAGS code:** `mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))`
-  **JAGS code:** `fit.PO <- sum(ppft[])`                    
-  **JAGS code:** `fit.PO.new <- sum(ppft.new[])`
+  discrepancy measures for entire data set 
+  **JAGS code:** `mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))`.  
+  **JAGS code:** `fit.PO <- sum(ppft[])`.  
+  **JAGS code:** `fit.PO.new <- sum(ppft.new[])`. 
   
 # Updated model in BUGS language
-
 
 ```r
  'model
@@ -318,7 +311,7 @@ output:
       }
   
     # PREDICTIONS -------------------------------------------------
-    
+
     eta.pred <- X.PO %*% b
 
     for (j in 1:n.PO)
@@ -327,12 +320,51 @@ output:
       cloglog(P.pred[j]) <- eta.pred[j] + log(area.PO[j])
     }
 
+    # POSTERIOR PREDICTIVE CHECK  --------------------------------
+    
+    # for PA
+    for (i in 1:n.PA)
+    {
+      # Fit assessments: Tjur R-Squared (fit statistic for logistic regression)
+      y.PA.new[i] ~ dbern(psi[i]*0.9999)   # replicate (new) data set
+      
+      pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)
+      absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)
+    }
+    
+    # Discrepancy measures for entire PA data set
+    pres.n <- sum(y.PA.new[] > 0)
+    absc.n <- sum(y.PA.new[] == 0)
+    r2_tjur <- abs(sum(pres[])/pres.n - sum(absc[])/absc.n)
+
+    # for PO
+    for (j in 1:n.PO)
+    {
+      # Fit assessments: Freeman-Tukey test and posterior predictive check
+      ppft[j] <- (sqrt(y.PO[j]) - sqrt(lambda[j]))^2          # observed
+      y.PO.new[j] ~ dpois(lambda[j])                          # replicate (new) data set
+      ppft.new[j] <- (sqrt(y.PO.new[j]) - sqrt(lambda[j]))^2  # expected
+    }
+    
+    # Discrepancy measures for entire data set
+    mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))
+    
+    # Add up discrepancy measures for entire data set
+    fit.PO <- sum(ppft[])                     
+    fit.PO.new <- sum(ppft.new[])             
+    
     # DERIVED QUANTITIES ------------------------------------------
     
     # area in each time period, and temporal change of area
     A.pre <- sum(P.pred[1:n.PO.half])
     A.post <- sum(P.pred[(n.PO.half+1):n.PO])
     delta.A <- A.post - A.pre
+    
+    # uncertainty for the temporal change
+    for (j in 1:n.PO.half)
+    {
+      delta.Grid[j] <- P.pred[n.PO.half+j] - P.pred[j]
+    }
   }
 '
 ```
