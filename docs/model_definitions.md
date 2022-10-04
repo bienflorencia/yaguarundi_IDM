@@ -187,7 +187,7 @@ output:
   **JAGS code:** `eta.pred <- X.PO %*% b`  
   **Equation:** $\mathbf{\eta_{pred}} =  \mathbf{X_{PO}} \times \mathbf{b}$  
 
-  Predicted probability of occurrence in grid cell i  
+  Predicted probability of occurrence in grid cell i   
   **JAGS code:** `for (j in 1:n.PO) { cloglog(P.pred[j]) <- eta.pred[j] + log(area.PO[j]) }`  
   **Equation:** $cloglog(P_{pred_j}) =  \eta_{pred_j} + \log(area_{PO_j})$  
 
@@ -208,9 +208,9 @@ output:
 
 ## Posterior predictive checks
 
- - Presence-Absence (PA) data 
+ - Presence-Absence (PA) data  
   
-  fit assessments: Tjur R-Squared (fit statistic for logistic regression)
+  fit assessments: Tjur R-Squared (fit statistic for logistic regression). 
   **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   # replicate (new) data set   
   **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`   
   **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`   
