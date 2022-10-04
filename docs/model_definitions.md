@@ -211,7 +211,7 @@ output:
  - Presence-Absence (PA) data  
   
   fit assessments: Tjur R-Squared (fit statistic for logistic regression)   
-  **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   # replicate (new) data set   
+  **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   
   **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`   
   **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`   
   
@@ -222,7 +222,7 @@ output:
 
  - Presence-Only (PO) data
  
-  discrepancy measures for entire data set 
+  discrepancy measures for entire data set  
   **JAGS code:** `mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))`.  
   **JAGS code:** `fit.PO <- sum(ppft[])`.  
   **JAGS code:** `fit.PO.new <- sum(ppft.new[])`. 
