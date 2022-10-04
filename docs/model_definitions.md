@@ -210,7 +210,7 @@ output:
 
  - Presence-Absence (PA) data  
   
-  fit assessments: Tjur R-Squared (fit statistic for logistic regression). 
+  fit assessments: Tjur R-Squared (fit statistic for logistic regression)   
   **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   # replicate (new) data set   
   **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`   
   **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`   
