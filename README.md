@@ -1,4 +1,4 @@
-# Integrating presence-only and presence-absence data to model kinetics of species geographic ranges: An example of the yaguarundí in Latin America
+# Integrating presence-only and presence-absence data to model changes in species geographic ranges: An example of yaguarundí in Latin America
 
 *Florencia Grattarola, Diana Bowler & Petr Keil*
 
