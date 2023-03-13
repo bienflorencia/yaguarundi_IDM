@@ -14,7 +14,7 @@ For more details please see [here](/docs/model_definitions.md)
 <tbody>
   <tr>
    <td style="text-align:left;"> n.PA </td>
-   <td style="text-align:left;"> number of blobs for both time periods (pre and pos) </td>
+   <td style="text-align:left;"> number of blobs for both time periods (time1 and time2) </td>
    <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large n_{PA}}#gh-light-mode-only">
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large n_{PA}}#gh-dark-mode-only"></td>
   </tr>
@@ -26,7 +26,7 @@ For more details please see [here](/docs/model_definitions.md)
   </tr>
   <tr>
    <td style="text-align:left;"> y.PA[i] </td>
-   <td style="text-align:left;"> presence (1) or absence (0) value in each i-th blob (overlapping surveys' area), can be for pre- or post- period </td>
+   <td style="text-align:left;"> presence (1) or absence (0) value in each i-th blob (overlapping surveys' area), can be for time1 or time2 </td>
    <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large y_{PA_i}}#gh-light-mode-only">
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large y_{PA_i}}#gh-dark-mode-only"></td>
   </tr>
@@ -50,7 +50,7 @@ For more details please see [here](/docs/model_definitions.md)
   </tr>
   <tr>
    <td style="text-align:left;"> n.PO </td>
-   <td style="text-align:left;"> number of grid-cells for both time periods concatenated (pre and pos) </td>
+   <td style="text-align:left;"> number of grid-cells for both time periods concatenated (time1 and time2) </td>
    <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large n_{PO}}#gh-light-mode-only">
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large n_{PO}}#gh-dark-mode-only"></td>
   </tr>
@@ -68,7 +68,7 @@ For more details please see [here](/docs/model_definitions.md)
   </tr>
   <tr>
    <td style="text-align:left;"> y.PO[j] </td>
-   <td style="text-align:left;"> count of observed points in j-th grid-cell, can be for pre- or post- period </td>
+   <td style="text-align:left;"> count of observed points in j-th grid-cell, can be for time1 or time2 </td>
    <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large y_{PO_j}}#gh-light-mode-only">
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large y_{PO_j}}#gh-dark-mode-only"></td>
   </tr>
@@ -145,16 +145,16 @@ For more details please see [here](/docs/model_definitions.md)
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large n_{spl}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
-   <td style="text-align:left;"> S.pre </td>
-   <td style="text-align:left;"> spline values for the first time period (pre) </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large S_{pre}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large S_{pre}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> S.time1 </td>
+   <td style="text-align:left;"> spline values for the first time period (time1) </td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large S_{time1}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large S_{time1}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
-   <td style="text-align:left;"> S.post </td>
-   <td style="text-align:left;"> spline values for the second time period (post) </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large S_{post}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large S_{post}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> S.time2 </td>
+   <td style="text-align:left;"> spline values for the second time period (time2) </td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large S_{time2}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large S_{time2}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> Z </td>
@@ -163,16 +163,16 @@ For more details please see [here](/docs/model_definitions.md)
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large Z}#gh-dark-mode-only"></td>
   </tr>
   <tr>
-   <td style="text-align:left;"> sigma.pre </td>
-   <td style="text-align:left;"> variance of splines for the first time period (pre) </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{pre}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{pre}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> sigma.time1 </td>
+   <td style="text-align:left;"> variance of splines for the first time period (time1) </td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{time1}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{time1}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
-   <td style="text-align:left;"> sigma.post </td>
-   <td style="text-align:left;"> variance of splines for the second time period (post) </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{post}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{post}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> sigma.time2 </td>
+   <td style="text-align:left;"> variance of splines for the second time period (time2) </td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{time2}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large \sigma_{time2}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> b </td>
@@ -271,20 +271,20 @@ For more details please see [here](/docs/model_definitions.md)
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large P_{pred_j}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
-   <td style="text-align:left;"> A.pre </td>
-   <td style="text-align:left;"> range area in the first time period (pre) </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large A_{pre}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large A_{pre}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> A.time1 </td>
+   <td style="text-align:left;"> range area in the first time period (time1) </td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large A_{time1}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large A_{time1}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
-   <td style="text-align:left;"> A.post </td>
-   <td style="text-align:left;"> range area in the second time period (post) </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large A_{post}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large A_{post}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> A.time2 </td>
+   <td style="text-align:left;"> range area in the second time period (time2) </td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large A_{time2}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large A_{time2}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> delta.A </td>
-   <td style="text-align:left;"> temporal change of range area (post-pre) </td>
+   <td style="text-align:left;"> temporal change of range area (time2-time1) </td>
    <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large \Delta A}#gh-light-mode-only">
                                  <img src="https://render.githubusercontent.com/render/math?math={\Large \Delta A}#gh-dark-mode-only"></td>
   </tr>

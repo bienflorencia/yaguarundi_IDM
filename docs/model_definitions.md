@@ -1,7 +1,7 @@
 ---
 title: "Model Definitions and Equations"
 author: 'Florencia Grattarola, Diana Bowler & Petr Keil'
-date: '30/04/2022'
+date: "2023-03-13"
 output: 
   html_document: 
     keep_md: yes
@@ -15,25 +15,25 @@ output:
 
 # DAG
 
-![DAG](/docs/figs/DAG.png)
+![DAG](docs/figs/DAG.png)
 
 # Definitions (variables and parameters)
 
 **Presence-absence data (camera-trap surveys)**  
 
-  - `n.PA`: number of blobs for both time periods (pre and pos) -- **notation:** $n_{PA}$   
+  - `n.PA`: number of blobs for both time periods (time1 and time2) -- **notation:** $n_{PA}$   
   - `i`: index identifying blobs, $i$, where $i \in 1:n_{PA}$ -- **notation:** $i$ 
-  - `y.PA[i]`: presence (1) or absence (0) value in each $i$-th blob (overlapping surveys' area), can be for pre- or post- period -- **notation:** $y_{PA_i}$   
+  - `y.PA[i]`: presence (1) or absence (0) value in each $i$-th blob (overlapping surveys' area), can be for time1 or time2 -- **notation:** $y_{PA_i}$   
   - `X.PA`: design matrix including vector of 1s (for intercept) and all the covariates and spline bases for each blob, for both time periods -- **notation:** $\mathbf{X_{PA}}$  
   - `area.PA[i]`: area of $i$-th blob in meters for both time periods -- **notation:** $area_{PA_i}$  
   - `effort[i]`: sampling effort for $i$-th blob in the given period for both time periods -- **notation:** $effort_i$   
   
 **Presence-only data (occurrence records)**  
 
-  - `n.PO`: number of grid-cells for both time periods (pre and pos) -- **notation:** $n_{PO}$    
+  - `n.PO`: number of grid-cells for both time periods (time1 and time2) -- **notation:** $n_{PO}$    
   - `j`: index identifying grid cells -- **notation** $j$, where $j \in 1:{n_{PO}}$
   - `n.PO.half`: number of grid-cells for one time period -- **notation** $n_{PO/2}$  
-  - `y.PO[j]`: count of observed points in $j$-th grid-cell, can be for pre- or post- period-- **notation:** $y_{PO_j}$
+  - `y.PO[j]`: count of observed points in $j$-th grid-cell, can be for time1 or time2 -- **notation:** $y_{PO_j}$
   - `X.PO`: design matrix including vector of 1s (for intercept) and all the covariates and spline bases for each grid-cell for both time periods -- **notation:** $X_{PO}$  
   - `area.PO[j]`: area of each grid-cell in meters for both time periods -- **notation:** $area_{PO_j}$  
   - `acce[j]`: accessibility from urban areas based on travel time for $j$-th grid-cell for both time periods -- **notation:** $acce_j$  
@@ -53,11 +53,11 @@ output:
 
   - `k`: number of spline basis functions (**not** in the model, only used in `mgcv::jagam` analysis) -- **notation:** `k`  
   - `n.spl`: number of spline basis functions in in X  (`X.PA` or `X.PO`) -- **notation:** $n_{spl}$   
-  - `S.pre`: spline values for the first time period (pre) -- **notation:** $S_{pre}$  
-  - `S.post`: spline values for the second time period (pos) -- **notation:** $S_{post}$  
+  - `S.time1`: spline values for the first time period (time1) -- **notation:** $S_{time1}$  
+  - `S.time2`: spline values for the second time period (time2) -- **notation:** $S_{time2}$  
   - `Z`: a vector of zeros (0) of the length of the splines -- **notation:** $Z$  
-  - `sigma.pre`: variance of splines for the first time period (pre) -- **notation:** $\sigma_{pre}$  
-  - `sigma.post`: variance of splines for the second time period (pos) -- **notation:** $\sigma_{post}$ 
+  - `sigma.time1`: variance of splines for the first time period (time1) -- **notation:** $\sigma_{time1}$  
+  - `sigma.time2`: variance of splines for the second time period (time2) -- **notation:** $\sigma_{time2}$ 
 
 **Model hyperparameters**  
 
@@ -86,10 +86,10 @@ output:
 
 **Derived quantities**  
 
-  - `A.pre`, range area in the first time period (pre) -- **notation:** $A_{pre}$
-  - `A.post`: range area in the second time period (post) -- **notation:** $A_{post}$  
-  - `delta.A`: temporal change of range area (post-pre) -- **notation:** $\Delta A$ 
-  - `delta.Grid`: uncertainty (SD) of the temporal change (post-pre) -- **notation:** $\Delta SD$  
+  - `A.time1`, range area in the first time period (time1) -- **notation:** $A_{time1}$
+  - `A.time2`: range area in the second time period (time2) -- **notation:** $A_{time2}$  
+  - `delta.A`: temporal change of range area (time2-time1) -- **notation:** $\Delta A$ 
+  - `delta.Grid`: uncertainty (SD) of the temporal change (time2-time1) -- **notation:** $\Delta SD$  
   
   
 # Equations
@@ -121,18 +121,18 @@ output:
  - Splines (imported and adjusted form output of `mgcv::jagam`)  
   
   prior for s(X,Y):as.factor(time)0  
-  **JAGS code:** `sigma.pre <- S.pre[1:n.spl, 1:n.spl] * gamma[1] + S.pre[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]`  
-  **Equation:** $\sigma_{pre} = S_{pre_{1:n.spl, 1:n.spl}} \times \gamma_1  + S_{pre_{1:n.spl, n.spl+1:n.spl \times 2}} \times \gamma_2$  
+  **JAGS code:** `sigma.time1 <- S.time1[1:n.spl, 1:n.spl] * gamma[1] + S.time1[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]`  
+  **Equation:** $\sigma_{time1} = S_{time1_{1:n.spl, 1:n.spl}} \times \gamma_1  + S_{time1_{1:n.spl, n.spl+1:n.spl \times 2}} \times \gamma_2$  
   
-  **JAGS code:** `b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.pre)`  
-  **Equation:** $b_{n.par+1:n.spl+n.par} \sim \textsf{Normal}(Z_{n.par+1:n.spl+n.par}, \sigma_{pre})$  
+  **JAGS code:** `b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.time1)`  
+  **Equation:** $b_{n.par+1:n.spl+n.par} \sim \textsf{Normal}(Z_{n.par+1:n.spl+n.par}, \sigma_{time1})$  
 
   prior for s(X,Y):as.factor(time)1  
-  **JAGS code:** `sigma.post <- S.post[1:n.spl, 1:n.spl] * gamma[3] + S.post[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]`  
-  **Equation:** $\sigma_{pos} = S_{pos_{1:n.spl, 1:n.spl}} \times \gamma_3  + S_{pos_{1:n.spl, n.spl+1:n.spl \times 2}} \times \gamma_4$  
+  **JAGS code:** `sigma.time2 <- S.time2[1:n.spl, 1:n.spl] * gamma[3] + S.time2[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]`  
+  **Equation:** $\sigma_{time2} = S_{time2_{1:n.spl, 1:n.spl}} \times \gamma_3  + S_{time2_{1:n.spl, n.spl+1:n.spl \times 2}} \times \gamma_4$  
   
-  **JAGS code:** `b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.post)`  
-  **Equation:** $b_{n.X-n.spl+1:n.X} \sim \textsf{Normal}(Z_{n.X-n.spl+1:n.X}, \sigma_{pos})$  
+  **JAGS code:** `b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.time2)`  
+  **Equation:** $b_{n.X-n.spl+1:n.X} \sim \textsf{Normal}(Z_{n.X-n.spl+1:n.X}, \sigma_{time2})$  
       
  - Priors for smoothing parameter  
  
@@ -187,47 +187,54 @@ output:
   **JAGS code:** `eta.pred <- X.PO %*% b`  
   **Equation:** $\mathbf{\eta_{pred}} =  \mathbf{X_{PO}} \times \mathbf{b}$  
 
-  Predicted probability of occurrence in grid cell i   
+  Predicted probability of occurrence in grid cell i  
   **JAGS code:** `for (j in 1:n.PO) { cloglog(P.pred[j]) <- eta.pred[j] + log(area.PO[j]) }`  
   **Equation:** $cloglog(P_{pred_j}) =  \eta_{pred_j} + \log(area_{PO_j})$  
 
  - Derived Quantities 
     
   range size in each time period, and temporal change of range size  
-  **JAGS code:** `A.pre <- sum(P.pred[1:n.PO.half])`  
-  **Equation:** $A_{pre} = \sum \eta_{pred_j}$ where $j \in 1:n_{PO}/2$  
+  **JAGS code:** `A.time1 <- sum(P.pred[1:n.PO.half])`  
+  **Equation:** $A_{time1} = \sum \eta_{pred_j}$ where $j \in 1:n_{PO}/2$  
   
-  **JAGS code:** `A.post <- sum(P.pred[(n.PO.half+1):n.PO])`  
-  **Equation:** $A_{post} = \sum \eta_{pred_j}$ where $j \in n_{PO}/2:n_{PO}$  
+  **JAGS code:** `A.time2 <- sum(P.pred[(n.PO.half+1):n.PO])`  
+  **Equation:** $A_{time2} = \sum \eta_{pred_j}$ where $j \in n_{PO}/2:n_{PO}$  
   
-  **JAGS code:** `delta.A <- A.post - A.pre`  
-  **Equation:** $\Delta A  = A_{pos} - A_{pre}$  
+  **JAGS code:** `delta.A <- A.time2 - A.time1`  
+  **Equation:** $\Delta A  = A_{time2} - A_{time1}$  
 
   **JAGS code:** `delta.Grid[j] <- P.pred[n.PO.half+j] - P.pred[j]`  
   **Equation:** $\Delta SD_j  = P_{pred_{n_{PO}/2+j}} - P_{pred_j}$  
 
 ## Posterior predictive checks
 
- - Presence-Absence (PA) data  
+ - Presence-Absence (PA) data 
+ 
+  fit assessments: Tjur R-Squared (fit statistic for logistic regression)
+  **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   # replicate (new) data set  
+  **Equation:**
+  **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`  
+  **Equation:**
+  **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`  
+  **Equation:**
   
-  fit assessments: Tjur R-Squared (fit statistic for logistic regression)   
-  **JAGS code:** `y.PA.new[i] ~ dbern(psi[i]*0.9999)`   
-  **JAGS code:** `pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)`   
-  **JAGS code:** `absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)`   
-  
-  discrepancy measures for entire PA data set  
-  **JAGS code:** `pres.n <- sum(y.PA.new[] > 0)`    
+  discrepancy measures for entire PA data set
+  **JAGS code:** `pres.n <- sum(y.PA.new[] > 0)`  
+  **Equation:**
   **JAGS code:** `absc.n <- sum(y.PA.new[] == 0)`   
+  **Equation:**
   **JAGS code:** `r2_tjur <- abs(sum(pres[])/pres.n - sum(absc[])/absc.n)`  
+  **Equation:**
 
  - Presence-Only (PO) data
  
-  discrepancy measures for entire data set  
-  **JAGS code:** `mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))`.  
-  **JAGS code:** `fit.PO <- sum(ppft[])`.  
-  **JAGS code:** `fit.PO.new <- sum(ppft.new[])`. 
+  discrepancy measures for entire data set
+  **JAGS code:** `mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))`
+  **JAGS code:** `fit.PO <- sum(ppft[])`                    
+  **JAGS code:** `fit.PO.new <- sum(ppft.new[])`
   
 # Updated model in BUGS language
+
 
 ```r
  'model
@@ -260,14 +267,14 @@ output:
     ## Splines (imported and adjusted form output of mgcv::jagam)
     
       ## prior for s(X,Y):as.factor(time)0 
-      sigma.pre <- S.pre[1:n.spl, 1:n.spl] * gamma[1]  + 
-            S.pre[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]
-      b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.pre) 
+      sigma.time1 <- S.time1[1:n.spl, 1:n.spl] * gamma[1]  + 
+                   S.time1[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]
+            b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.time1) 
      
       ## prior for s(X,Y):as.factor(time)1
-      sigma.post <- S.post[1:n.spl, 1:n.spl] * gamma[3]  + 
-            S.post[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]
-      b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.post) 
+      sigma.time2 <- S.time2[1:n.spl, 1:n.spl] * gamma[3]  + 
+                    S.time2[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]
+      b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.time2) 
      
       ## Priors for smoothing parameter 
       for (f in 1:n.fac) 
@@ -285,10 +292,11 @@ output:
        for (i in 1:n.PA) 
        { 
          # the probability of presence
-         cloglog(psi[i]) <- eta.PA[i] + log(area.PA[i]) + beta*log(effort[i])
-          
+         cloglog(psi[i]) <- eta.PA[i] + log(area.PA[i]) + beta*log(effort[i]) 
+        
          # presences and absences come from a Bernoulli distribution
-         y.PA[i] ~ dbern(psi[i]*0.9999)    
+         y.PA[i] ~ dbern(psi[i]*0.9999) 
+         
        } 
   
       ## --- Presence-Only (PO) data --- 
@@ -301,13 +309,13 @@ output:
         P.ret[j] <- alpha0[country[j]] * exp( (-alpha1) * acce[j]) 
         
         # true mean number (nu) of points per cell i is the true intensity multiplied by cell area
-        nu[j] <- area.PO[j] * exp(eta.PO[j])
+        nu[j] <- area.PO[j] * exp(eta.PO[j]) 
 
         # thinning: the true lambda
         lambda[j] <- nu[j] * P.ret[j]
 
         # counts of observed points come from a Poisson distribution
-        y.PO[j] ~ dpois(lambda[j])
+        y.PO[j] ~ dpois(lambda[j]) 
       }
   
     # PREDICTIONS -------------------------------------------------
@@ -326,39 +334,29 @@ output:
     for (i in 1:n.PA)
     {
       # Fit assessments: Tjur R-Squared (fit statistic for logistic regression)
-      y.PA.new[i] ~ dbern(psi[i]*0.9999)   # replicate (new) data set
-      
-      pres[i] <- ifelse(y.PA[i] > 0, y.PA.new[i], 0)
-      absc[i] <- ifelse(y.PA[i] == 0, y.PA.new[i], 0)
+      pres[i] <- ifelse(y.PA[i] > 0, psi[i], 0)
+      absc[i] <- ifelse(y.PA[i] == 0, psi[i], 0)
     }
     
     # Discrepancy measures for entire PA data set
-    pres.n <- sum(y.PA.new[] > 0)
-    absc.n <- sum(y.PA.new[] == 0)
+    pres.n <- sum(y.PA[] > 0)
+    absc.n <- sum(y.PA[] == 0)
     r2_tjur <- abs(sum(pres[])/pres.n - sum(absc[])/absc.n)
 
     # for PO
     for (j in 1:n.PO)
     {
-      # Fit assessments: Freeman-Tukey test and posterior predictive check
-      ppft[j] <- (sqrt(y.PO[j]) - sqrt(lambda[j]))^2          # observed
-      y.PO.new[j] ~ dpois(lambda[j])                          # replicate (new) data set
-      ppft.new[j] <- (sqrt(y.PO.new[j]) - sqrt(lambda[j]))^2  # expected
+      # Fit assessments: Posterior predictive check and data for DHARMA
+      y.PO.new[j] ~ dpois(lambda[j]) 
+
     }
-    
-    # Discrepancy measures for entire data set
-    mean.abs.lambda.diff <- mean(abs(lambda[] - y.PO[]))
-    
-    # Add up discrepancy measures for entire data set
-    fit.PO <- sum(ppft[])                     
-    fit.PO.new <- sum(ppft.new[])             
-    
+
     # DERIVED QUANTITIES ------------------------------------------
     
     # area in each time period, and temporal change of area
-    A.pre <- sum(P.pred[1:n.PO.half])
-    A.post <- sum(P.pred[(n.PO.half+1):n.PO])
-    delta.A <- A.post - A.pre
+    A.time1 <- sum(P.pred[1:n.PO.half])
+    A.time2 <- sum(P.pred[(n.PO.half+1):n.PO])
+    delta.A <- A.time2 - A.time1
     
     # uncertainty for the temporal change
     for (j in 1:n.PO.half)
