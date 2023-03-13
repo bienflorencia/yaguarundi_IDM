@@ -11,6 +11,7 @@
 
 <meta name="author" content="Florencia Grattarola, Diana Bowler &amp; Petr Keil" />
 
+<meta name="date" content="2023-03-13" />
 
 <title>Yaguarundí IDM</title>
 
@@ -237,6 +238,7 @@ window.buildTabsets = function(tocID) {
     </style>
 
 
+
 <style type="text/css">
   code {
     white-space: pre;
@@ -318,13 +320,20 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   for (var i = 0; i < sheets.length; i++) {
     if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
     try { var rules = sheets[i].cssRules; } catch (e) { continue; }
-    for (var j = 0; j < rules.length; j++) {
+    var j = 0;
+    while (j < rules.length) {
       var rule = rules[j];
       // check if there is a div.sourceCode rule
-      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -359,6 +368,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -445,420 +457,355 @@ pre code {
 <h1 class="title toc-ignore">Yaguarundí IDM</h1>
 <h4 class="author">Florencia Grattarola, Diana Bowler &amp; Petr
 Keil</h4>
-<h4 class="date">30/04/2022</h4>
+<h4 class="date">2023-03-13</h4>
 
 </div>
 
-<div id="TOC">
+
+<p>Analysis for the Yaguarundí (<em>Herpailurus yagouaroundi</em>), with
+new covariates: <code>npp</code>, <code>elev</code>, <code>bio7</code>,
+and <code>bio15</code>.</p>
 <ul>
-<li><a href="#libraries" id="toc-libraries"><span class="toc-section-number">1</span> Libraries</a></li>
-<li><a href="#data" id="toc-data"><span class="toc-section-number">2</span> Data</a></li>
-<li><a href="#generalized-additive-models-from-mgcv" id="toc-generalized-additive-models-from-mgcv"><span class="toc-section-number">3</span> Generalized Additive models from
-<code>mgcv</code></a>
-<ul>
-<li><a href="#setting-the-scene-for-gam" id="toc-setting-the-scene-for-gam"><span class="toc-section-number">3.1</span> Setting the scene for GAM</a></li>
-<li><a href="#fitting-the-gam-model" id="toc-fitting-the-gam-model"><span class="toc-section-number">3.2</span> Fitting the GAM model</a></li>
-</ul></li>
-<li><a href="#jagam-splines" id="toc-jagam-splines"><span class="toc-section-number">4</span> Jagam splines</a></li>
-<li><a href="#the-model-in-jags" id="toc-the-model-in-jags"><span class="toc-section-number">5</span> The model in JAGS</a>
-<ul>
-<li><a href="#prepare-data-for-jags" id="toc-prepare-data-for-jags"><span class="toc-section-number">5.1</span> Prepare data for JAGS</a></li>
-<li><a href="#specify-the-model-in-bugs-language" id="toc-specify-the-model-in-bugs-language"><span class="toc-section-number">5.2</span> Specify the model in BUGS
-language</a></li>
-<li><a href="#inits-function" id="toc-inits-function"><span class="toc-section-number">5.3</span> Inits function</a></li>
-<li><a href="#fit-the-model" id="toc-fit-the-model"><span class="toc-section-number">5.4</span> Fit the model</a></li>
-</ul></li>
+<li>Libraries</li>
 </ul>
-</div>
-
-<div id="libraries" class="section level1" number="1">
-<h1><span class="header-section-number">1</span> Libraries</h1>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(R2jags) <span class="co"># interface to JAGS</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code></pre></div>
-</div>
-<div id="data" class="section level1" number="2">
-<h1><span class="header-section-number">2</span> Data</h1>
-<p>Loading the pre- and post-2014 data for presence-absence (PA) and
-presence-only (PO).</p>
-<p><strong>Covariates</strong></p>
-<ul>
-<li><strong>env.elev</strong>: Elevation (*)<br />
-</li>
-<li><strong>env.npp</strong>: Net Primary Productivity (*)<br />
-</li>
-<li><strong>env.bio_7</strong>: Temperature Annual Range (*)<br />
-</li>
-<li><strong>env.bio_15</strong>: Precipitation Seasonality (Coefficient
-of Variation) (*)</li>
-</ul>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(R2jags) <span class="co"># interface to JAGS</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code></pre></div>
+<div id="data" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> Data</h1>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Presence-absence data</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>PA_pre <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">&#39;data/PA_pre.rds&#39;</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.elev) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_4) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.npp)) <span class="co"># remove NA&#39;s</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.npp) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_15) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.bio_7) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.elev)) <span class="co"># remove NA&#39;s</span></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>PA_post <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">&#39;data/PA_post.rds&#39;</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.elev) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_4) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.npp)) <span class="co"># remove NA&#39;s</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.npp) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_15) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.bio_7) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.elev)) <span class="co"># remove NA&#39;s</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Presence-only data</span></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>PO_pre <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">&#39;data/PO_pre.rds&#39;</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.elev) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_4) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.npp) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(acce) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(count)) <span class="co"># remove NA&#39;s</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.npp) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_15) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.bio_7) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.elev) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(acce) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(count)) <span class="co"># remove NA&#39;s</span></span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>PO_post  <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">&#39;data/PO_post.rds&#39;</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.elev) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_4) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.npp) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(acce) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(count)) <span class="co"># remove NA&#39;s</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(env.npp) <span class="sc">&amp;!</span><span class="fu">is.na</span>(env.bio_15) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.bio_7) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(env.elev) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(acce) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(count)) <span class="co"># remove NA&#39;s</span></span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>PA_pre_post <span class="ot">&lt;-</span> <span class="fu">rbind</span>(PA_pre <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">time=</span><span class="dv">0</span>), PA_post <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">time=</span><span class="dv">1</span>)) </span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>PO_pre_post <span class="ot">&lt;-</span> <span class="fu">rbind</span>(PO_pre <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">time=</span><span class="dv">0</span>), PO_post <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">time=</span><span class="dv">1</span>)) </span></code></pre></div>
-</div>
-<div id="generalized-additive-models-from-mgcv" class="section level1" number="3">
-<h1><span class="header-section-number">3</span> Generalized Additive
-models from <code>mgcv</code></h1>
+<div id="splines" class="section level2" number="1.1">
+<h2><span class="header-section-number">1.1</span> Splines</h2>
 <p>Before going fully Bayesian in JAGS, we will do some GAMs in
 <code>mgcv</code> to (1) extract spline basis functions (using
 <code>mgcv::jagam</code>) that will then be used in JAGS, and (2) get
 some reasonable starting values for coefficients for the MCMC algorithm
 in JAGS.</p>
-<div id="setting-the-scene-for-gam" class="section level2" number="3.1">
-<h2><span class="header-section-number">3.1</span> Setting the scene for
-GAM</h2>
-<p>The <strong><code>k</code> parameter</strong> setting the number of
-basis functions:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>k <span class="ot">=</span> <span class="dv">9</span></span></code></pre></div>
-<p><strong>Model formula</strong>. we set it here so that we can then
-use it at different places in the code, if needed.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>gam.formula <span class="ot">&lt;-</span> <span class="fu">formula</span>(count <span class="sc">~</span> env.elev <span class="sc">+</span> </span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                               env.bio_7 <span class="sc">+</span> </span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>                               env.bio_15 <span class="sc">+</span> </span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>                               env.npp <span class="sc">+</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">offset</span>(<span class="fu">log</span>(area)) <span class="sc">+</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">s</span>(X, Y, <span class="at">by=</span><span class="fu">as.factor</span>(time), <span class="at">k=</span>k))</span></code></pre></div>
-</div>
-<div id="fitting-the-gam-model" class="section level2" number="3.2">
-<h2><span class="header-section-number">3.2</span> Fitting the GAM
-model</h2>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>model.gam <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">gam</span>(gam.formula, </span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>                       <span class="at">data =</span> PO_pre_post,</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>                       <span class="at">family =</span> poisson)</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model.gam)</span></code></pre></div>
+<ul>
+<li>Set the <strong><code>k</code> parameter</strong>: the number of
+basis functions.<br />
+</li>
+<li>Set the <strong>model formula</strong>.<br />
+</li>
+<li>Fit the <strong>GAM model</strong>.</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>k <span class="ot">=</span> <span class="dv">10</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>gam.formula <span class="ot">&lt;-</span> <span class="fu">formula</span>(count <span class="sc">~</span> env.npp <span class="sc">+</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>                               env.bio_15 <span class="sc">+</span> </span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>                               env.bio_7 <span class="sc">+</span> </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>                               env.elev <span class="sc">+</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">offset</span>(<span class="fu">log</span>(area)) <span class="sc">+</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">s</span>(X, Y, <span class="at">by=</span><span class="fu">as.factor</span>(time), <span class="at">k=</span>k))</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>model.gam <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">gam</span>(gam.formula, </span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>                       <span class="at">data =</span> PO_pre_post,</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>                       <span class="at">family =</span> poisson)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model.gam)</span></code></pre></div>
 <pre><code>## 
 ## Family: poisson 
 ## Link function: log 
 ## 
 ## Formula:
-## count ~ env.elev + env.bio_7 + env.bio_15 + env.npp + offset(log(area)) + 
+## count ~ env.npp + env.bio_15 + env.bio_7 + env.elev + offset(log(area)) + 
 ##     s(X, Y, by = as.factor(time), k = k)
 ## 
 ## Parametric coefficients:
-##              Estimate Std. Error  z value Pr(&gt;|z|)    
-## (Intercept) -28.02812    0.20154 -139.068  &lt; 2e-16 ***
-## env.elev      1.71599    0.23118    7.423 1.15e-13 ***
-## env.bio_7    -0.93753    0.11493   -8.157 3.42e-16 ***
-## env.bio_15    2.32194    0.25441    9.127  &lt; 2e-16 ***
-## env.npp       0.80207    0.08286    9.680  &lt; 2e-16 ***
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -29.4024     0.3161 -93.030  &lt; 2e-16 ***
+## env.npp      -0.2125     0.1028  -2.067   0.0387 *  
+## env.bio_15    1.1392     0.2715   4.196 2.72e-05 ***
+## env.bio_7    -1.1839     0.1288  -9.188  &lt; 2e-16 ***
+## env.elev      1.0939     0.2588   4.227 2.37e-05 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## Approximate significance of smooth terms:
 ##                           edf Ref.df Chi.sq p-value    
-## s(X,Y):as.factor(time)0 7.892  7.996  290.4  &lt;2e-16 ***
-## s(X,Y):as.factor(time)1 7.932  7.999  604.6  &lt;2e-16 ***
+## s(X,Y):as.factor(time)0 8.974      9  212.6  &lt;2e-16 ***
+## s(X,Y):as.factor(time)1 8.987      9  555.3  &lt;2e-16 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## R-sq.(adj) =  0.0417   Deviance explained = 35.1%
-## UBRE = -0.44329  Scale est. = 1         n = 4366</code></pre>
-</div>
-</div>
-<div id="jagam-splines" class="section level1" number="4">
-<h1><span class="header-section-number">4</span> Jagam splines</h1>
-<p>To get spline values for both types of data we use the
-<code>mgcv::jagam</code>. We first run the code for one type of data
-(presence-only in this case, given the data are more widely
-distributed), and then use the model to predict on the other type of
-data.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>jagam.out <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">jagam</span>(gam.formula, </span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                         <span class="at">data =</span> PO_pre_post,</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                         <span class="at">family =</span> poisson,</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">file=</span><span class="st">&#39;&#39;</span>) <span class="co"># we will not need this file</span></span></code></pre></div>
+## R-sq.(adj) =  0.0424   Deviance explained = 38.7%
+## UBRE = -0.47236  Scale est. = 1         n = 4366</code></pre>
+<ul>
+<li>Get the <strong>jagam splines</strong> values: using
+<code>mgcv::jagam</code>.</li>
+</ul>
+<p>To get spline values for both types of data we first run the code for
+one type of data (presence-only in this case, given the data are more
+widely distributed), and then use the model to predict on the other type
+of data.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>jagam.out <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">jagam</span>(gam.formula, </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>                         <span class="at">data =</span> PO_pre_post,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>                         <span class="at">family =</span> poisson,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">file=</span><span class="st">&#39;&#39;</span>) <span class="co"># we will not need this file</span></span></code></pre></div>
 <pre><code>## model {
 ##   eta &lt;- X %*% b + offset ## linear predictor
 ##   for (i in 1:n) { mu[i] &lt;-  exp(eta[i]) } ## expected response
 ##   for (i in 1:n) { y[i] ~ dpois(mu[i]) } ## response 
-##   ## Parametric effect priors CHECK tau=1/8.5^2 is appropriate!
-##   for (i in 1:5) { b[i] ~ dnorm(0,0.014) }
+##   ## Parametric effect priors CHECK tau=1/8.8^2 is appropriate!
+##   for (i in 1:5) { b[i] ~ dnorm(0,0.013) }
 ##   ## prior for s(X,Y):as.factor(time)0... 
-##   K1 &lt;- S1[1:8,1:8] * lambda[1]  + S1[1:8,9:16] * lambda[2]
-##   b[6:13] ~ dmnorm(zero[6:13],K1) 
+##   K1 &lt;- S1[1:9,1:9] * lambda[1]  + S1[1:9,10:18] * lambda[2]
+##   b[6:14] ~ dmnorm(zero[6:14],K1) 
 ##   ## prior for s(X,Y):as.factor(time)1... 
-##   K2 &lt;- S2[1:8,1:8] * lambda[3]  + S2[1:8,9:16] * lambda[4]
-##   b[14:21] ~ dmnorm(zero[14:21],K2) 
+##   K2 &lt;- S2[1:9,1:9] * lambda[3]  + S2[1:9,10:18] * lambda[4]
+##   b[15:23] ~ dmnorm(zero[15:23],K2) 
 ##   ## smoothing parameter priors CHECK...
 ##   for (i in 1:4) {
 ##     lambda[i] ~ dgamma(.05,.005)
 ##     rho[i] &lt;- log(lambda[i])
 ##   }
 ## }</code></pre>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>smooth0 <span class="ot">&lt;-</span> jagam.out<span class="sc">$</span>pregam<span class="sc">$</span>smooth[[<span class="dv">1</span>]]</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>smooth1 <span class="ot">&lt;-</span> jagam.out<span class="sc">$</span>pregam<span class="sc">$</span>smooth[[<span class="dv">2</span>]]</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># presence-only data</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>jagam.PO.time0 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth0, <span class="at">data =</span> PO_pre_post)</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>jagam.PO.time1 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth1, <span class="at">data =</span> PO_pre_post)</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co"># presence-absence data</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>jagam.PA.time0 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth0, <span class="at">data =</span> PA_pre_post)</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>jagam.PA.time1 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth1, <span class="at">data =</span> PA_pre_post)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>smooth0 <span class="ot">&lt;-</span> jagam.out<span class="sc">$</span>pregam<span class="sc">$</span>smooth[[<span class="dv">1</span>]]</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>smooth1 <span class="ot">&lt;-</span> jagam.out<span class="sc">$</span>pregam<span class="sc">$</span>smooth[[<span class="dv">2</span>]]</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># presence-only data</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>jagam.PO.time0 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth0, <span class="at">data =</span> PO_pre_post)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>jagam.PO.time1 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth1, <span class="at">data =</span> PO_pre_post)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># presence-absence data</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>jagam.PA.time0 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth0, <span class="at">data =</span> PA_pre_post)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>jagam.PA.time1 <span class="ot">&lt;-</span> mgcv<span class="sc">::</span><span class="fu">PredictMat</span>(<span class="at">object =</span> smooth1, <span class="at">data =</span> PA_pre_post)</span></code></pre></div>
 </div>
-<div id="the-model-in-jags" class="section level1" number="5">
-<h1><span class="header-section-number">5</span> The model in JAGS</h1>
-<div id="prepare-data-for-jags" class="section level2" number="5.1">
-<h2><span class="header-section-number">5.1</span> Prepare data for
-JAGS</h2>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>PA.X <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="st">&#39;(Intercept)&#39;</span><span class="ot">=</span> <span class="dv">1</span>, </span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.elev&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.elev,</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_7&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.bio_7,</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_15&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.bio_15,</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.npp&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.npp,</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>              jagam.PA.time0, </span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>              jagam.PA.time1)</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>PO.X <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="st">&#39;(Intercept)&#39;</span><span class="ot">=</span> <span class="dv">1</span>, </span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.elev&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.elev,</span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_7&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.bio_7,</span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_15&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.bio_15,</span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.npp&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.npp,</span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>              jagam.PO.time0, </span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>              jagam.PO.time1)</span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="co"># number of all columns in X</span></span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>n.X <span class="ot">=</span> <span class="fu">ncol</span>(PA.X)</span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="co"># number of columns in X of spline basis functions</span></span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>n.spl <span class="ot">=</span> <span class="fu">ncol</span>(jagam.PA.time0)</span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a><span class="co"># number of columns in X of env. predictors + intercept</span></span>
-<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>n.par <span class="ot">=</span> n.X <span class="sc">-</span> <span class="fu">ncol</span>(jagam.PA.time0)<span class="sc">*</span><span class="dv">2</span></span>
-<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a><span class="co"># number of factors of time in X </span></span>
-<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>n.fac <span class="ot">=</span> <span class="fu">length</span>(<span class="fu">unique</span>(<span class="fu">as.factor</span>(PO_pre_post<span class="sc">$</span>time)))<span class="sc">*</span><span class="dv">2</span></span>
-<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a><span class="co"># country as an indexed variable</span></span>
-<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>PO.country  <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">as.factor</span>(PO_pre_post<span class="sc">$</span>country))</span>
-<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a><span class="co">#number of countries</span></span>
-<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>n.country <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(PO.country))</span>
-<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>jags.data <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">n.PA =</span> <span class="fu">nrow</span>(PA_pre_post),</span>
-<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>                  <span class="at">y.PA =</span> PA_pre_post<span class="sc">$</span>presabs, </span>
-<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>                  <span class="at">X.PA =</span> PA.X,</span>
-<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a>                  <span class="at">area.PA =</span> PA_pre_post<span class="sc">$</span>area,</span>
-<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>                  <span class="at">effort =</span> PA_pre_post<span class="sc">$</span>effort,</span>
-<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.PO =</span> <span class="fu">nrow</span>(PO_pre_post),</span>
-<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.PO.half =</span> <span class="fu">nrow</span>(PO_pre_post)<span class="sc">/</span><span class="dv">2</span>,</span>
-<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a>                  <span class="at">y.PO =</span> PO_pre_post<span class="sc">$</span>count, </span>
-<span id="cb10-43"><a href="#cb10-43" aria-hidden="true" tabindex="-1"></a>                  <span class="at">X.PO =</span> PO.X,</span>
-<span id="cb10-44"><a href="#cb10-44" aria-hidden="true" tabindex="-1"></a>                  <span class="at">area.PO =</span> PO_pre_post<span class="sc">$</span>area, </span>
-<span id="cb10-45"><a href="#cb10-45" aria-hidden="true" tabindex="-1"></a>                  <span class="at">acce =</span> PO_pre_post<span class="sc">$</span>acce,</span>
-<span id="cb10-46"><a href="#cb10-46" aria-hidden="true" tabindex="-1"></a>                  <span class="at">country =</span> PO.country,</span>
-<span id="cb10-47"><a href="#cb10-47" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.X =</span> n.X,</span>
-<span id="cb10-48"><a href="#cb10-48" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.cntr =</span> n.country,</span>
-<span id="cb10-49"><a href="#cb10-49" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.par =</span> n.par,</span>
-<span id="cb10-50"><a href="#cb10-50" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.fac =</span> n.fac,</span>
-<span id="cb10-51"><a href="#cb10-51" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.spl =</span> n.spl,</span>
-<span id="cb10-52"><a href="#cb10-52" aria-hidden="true" tabindex="-1"></a>                  <span class="at">Z =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="fu">length</span>(jagam.out<span class="sc">$</span>jags.data<span class="sc">$</span>zero)),</span>
-<span id="cb10-53"><a href="#cb10-53" aria-hidden="true" tabindex="-1"></a>                  <span class="at">S.pre =</span> jagam.out<span class="sc">$</span>jags.data<span class="sc">$</span>S1,</span>
-<span id="cb10-54"><a href="#cb10-54" aria-hidden="true" tabindex="-1"></a>                  <span class="at">S.post =</span> jagam.out<span class="sc">$</span>jags.data<span class="sc">$</span>S2) </span></code></pre></div>
 </div>
-<div id="specify-the-model-in-bugs-language" class="section level2" number="5.2">
-<h2><span class="header-section-number">5.2</span> Specify the model in
-BUGS language</h2>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&#39;model</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="st">  { </span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="st">    # PRIORS --------------------------------------------------</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Thinning at locations with complete accessibility in PO data</span></span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="st">      # intercept of the decay function for each country of origin. </span></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="st">      # It needs a flat prior between 0 and 1</span></span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="st">      for (c in 1:n.cntr) </span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="st">      {</span></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="st">        alpha0[c] ~ dbeta(1, 1)  </span></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="st">      # steepness of the decaying distance-P.ret relationship in PO data</span></span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="st">      alpha1 ~ dgamma(0.5, 0.05)   </span></span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Effect of sampling effort in PA data</span></span>
-<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a><span class="st">      beta ~ dnorm(0, 0.01)</span></span>
-<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Parametric effects of environment driving the point process intensity</span></span>
-<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a><span class="st">     # (it also includes an intercept)</span></span>
-<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a><span class="st">     </span></span>
-<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a><span class="st">      for (r in 1:n.par)</span></span>
-<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a><span class="st">      { </span></span>
-<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a><span class="st">        b[r] ~ dnorm(0,0.01) </span></span>
-<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
-<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
-<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Splines (imported and adjusted form output of mgcv::jagam)</span></span>
-<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a><span class="st">      ## prior for s(X,Y):as.factor(time)0 </span></span>
-<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a><span class="st">      sigma.pre &lt;- S.pre[1:n.spl, 1:n.spl] * gamma[1]  + </span></span>
-<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a><span class="st">            S.pre[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]</span></span>
-<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a><span class="st">      b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.pre) </span></span>
-<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a><span class="st">     </span></span>
-<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a><span class="st">      ## prior for s(X,Y):as.factor(time)1</span></span>
-<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a><span class="st">      sigma.post &lt;- S.post[1:n.spl, 1:n.spl] * gamma[3]  + </span></span>
-<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a><span class="st">            S.post[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]</span></span>
-<span id="cb11-38"><a href="#cb11-38" aria-hidden="true" tabindex="-1"></a><span class="st">      b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.post) </span></span>
-<span id="cb11-39"><a href="#cb11-39" aria-hidden="true" tabindex="-1"></a><span class="st">     </span></span>
-<span id="cb11-40"><a href="#cb11-40" aria-hidden="true" tabindex="-1"></a><span class="st">      ## Priors for smoothing parameter </span></span>
-<span id="cb11-41"><a href="#cb11-41" aria-hidden="true" tabindex="-1"></a><span class="st">      for (f in 1:n.fac) </span></span>
-<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a><span class="st">      {</span></span>
-<span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a><span class="st">        gamma[f] ~ dgamma(.5,.5)</span></span>
-<span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a><span class="st">        rho[f] &lt;- log(gamma[f])</span></span>
-<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
-<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a><span class="st">    # LIKELIHOOD --------------------------------------------------</span></span>
-<span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a><span class="st">      ## --- Presence-Absence (PA) data ---</span></span>
-<span id="cb11-50"><a href="#cb11-50" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
-<span id="cb11-51"><a href="#cb11-51" aria-hidden="true" tabindex="-1"></a><span class="st">       eta.PA &lt;- X.PA %*% b ## linear predictor</span></span>
-<span id="cb11-52"><a href="#cb11-52" aria-hidden="true" tabindex="-1"></a><span class="st">        </span></span>
-<span id="cb11-53"><a href="#cb11-53" aria-hidden="true" tabindex="-1"></a><span class="st">       for (i in 1:n.PA) </span></span>
-<span id="cb11-54"><a href="#cb11-54" aria-hidden="true" tabindex="-1"></a><span class="st">       { </span></span>
-<span id="cb11-55"><a href="#cb11-55" aria-hidden="true" tabindex="-1"></a><span class="st">         # the probability of presence</span></span>
-<span id="cb11-56"><a href="#cb11-56" aria-hidden="true" tabindex="-1"></a><span class="st">         cloglog(psi[i]) &lt;- eta.PA[i] + log(area.PA[i]) + beta*log(effort[i])</span></span>
-<span id="cb11-57"><a href="#cb11-57" aria-hidden="true" tabindex="-1"></a><span class="st">          </span></span>
-<span id="cb11-58"><a href="#cb11-58" aria-hidden="true" tabindex="-1"></a><span class="st">         # presences and absences come from a Bernoulli distribution</span></span>
-<span id="cb11-59"><a href="#cb11-59" aria-hidden="true" tabindex="-1"></a><span class="st">         y.PA[i] ~ dbern(psi[i]*0.9999)    </span></span>
-<span id="cb11-60"><a href="#cb11-60" aria-hidden="true" tabindex="-1"></a><span class="st">       } </span></span>
-<span id="cb11-61"><a href="#cb11-61" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb11-62"><a href="#cb11-62" aria-hidden="true" tabindex="-1"></a><span class="st">      ## --- Presence-Only (PO) data --- </span></span>
-<span id="cb11-63"><a href="#cb11-63" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb11-64"><a href="#cb11-64" aria-hidden="true" tabindex="-1"></a><span class="st">      eta.PO &lt;- X.PO %*% b  ## linear predictor</span></span>
-<span id="cb11-65"><a href="#cb11-65" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-66"><a href="#cb11-66" aria-hidden="true" tabindex="-1"></a><span class="st">      for (j in 1:n.PO)</span></span>
-<span id="cb11-67"><a href="#cb11-67" aria-hidden="true" tabindex="-1"></a><span class="st">      {</span></span>
-<span id="cb11-68"><a href="#cb11-68" aria-hidden="true" tabindex="-1"></a><span class="st">        # cell-specific probability of retainin (observing) a point is a function of accessibility</span></span>
-<span id="cb11-69"><a href="#cb11-69" aria-hidden="true" tabindex="-1"></a><span class="st">        P.ret[j] &lt;- alpha0[country[j]] * exp( (-alpha1) * acce[j]) </span></span>
-<span id="cb11-70"><a href="#cb11-70" aria-hidden="true" tabindex="-1"></a><span class="st">        </span></span>
-<span id="cb11-71"><a href="#cb11-71" aria-hidden="true" tabindex="-1"></a><span class="st">        # true mean number (nu) of points per cell i is the true intensity multiplied by cell area</span></span>
-<span id="cb11-72"><a href="#cb11-72" aria-hidden="true" tabindex="-1"></a><span class="st">        nu[j] &lt;- area.PO[j] * exp(eta.PO[j])</span></span>
-<span id="cb11-73"><a href="#cb11-73" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-74"><a href="#cb11-74" aria-hidden="true" tabindex="-1"></a><span class="st">        # thinning: the true lambda</span></span>
-<span id="cb11-75"><a href="#cb11-75" aria-hidden="true" tabindex="-1"></a><span class="st">        lambda[j] &lt;- nu[j] * P.ret[j]</span></span>
-<span id="cb11-76"><a href="#cb11-76" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-77"><a href="#cb11-77" aria-hidden="true" tabindex="-1"></a><span class="st">        # counts of observed points come from a Poisson distribution</span></span>
-<span id="cb11-78"><a href="#cb11-78" aria-hidden="true" tabindex="-1"></a><span class="st">        y.PO[j] ~ dpois(lambda[j])</span></span>
-<span id="cb11-79"><a href="#cb11-79" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
-<span id="cb11-80"><a href="#cb11-80" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb11-81"><a href="#cb11-81" aria-hidden="true" tabindex="-1"></a><span class="st">    # PREDICTIONS -------------------------------------------------</span></span>
-<span id="cb11-82"><a href="#cb11-82" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-83"><a href="#cb11-83" aria-hidden="true" tabindex="-1"></a><span class="st">    eta.pred &lt;- X.PO %*% b</span></span>
-<span id="cb11-84"><a href="#cb11-84" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-85"><a href="#cb11-85" aria-hidden="true" tabindex="-1"></a><span class="st">    for (j in 1:n.PO)</span></span>
-<span id="cb11-86"><a href="#cb11-86" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
-<span id="cb11-87"><a href="#cb11-87" aria-hidden="true" tabindex="-1"></a><span class="st">      # predicted probability of occurrence in grid cell j</span></span>
-<span id="cb11-88"><a href="#cb11-88" aria-hidden="true" tabindex="-1"></a><span class="st">      cloglog(P.pred[j]) &lt;- eta.pred[j] + log(area.PO[j])</span></span>
-<span id="cb11-89"><a href="#cb11-89" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
-<span id="cb11-90"><a href="#cb11-90" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-91"><a href="#cb11-91" aria-hidden="true" tabindex="-1"></a><span class="st">    # POSTERIOR PREDICTIVE CHECK  --------------------------------</span></span>
-<span id="cb11-92"><a href="#cb11-92" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-93"><a href="#cb11-93" aria-hidden="true" tabindex="-1"></a><span class="st">    # for PA</span></span>
-<span id="cb11-94"><a href="#cb11-94" aria-hidden="true" tabindex="-1"></a><span class="st">    for (i in 1:n.PA)</span></span>
-<span id="cb11-95"><a href="#cb11-95" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
-<span id="cb11-96"><a href="#cb11-96" aria-hidden="true" tabindex="-1"></a><span class="st">      # Fit assessments: Tjur R-Squared (fit statistic for logistic regression)</span></span>
-<span id="cb11-97"><a href="#cb11-97" aria-hidden="true" tabindex="-1"></a><span class="st">      y.PA.new[i] ~ dbern(psi[i]*0.9999)   # replicate (new) data set</span></span>
-<span id="cb11-98"><a href="#cb11-98" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
-<span id="cb11-99"><a href="#cb11-99" aria-hidden="true" tabindex="-1"></a><span class="st">      pres[i] &lt;- ifelse(y.PA[i] &gt; 0, y.PA.new[i], 0)</span></span>
-<span id="cb11-100"><a href="#cb11-100" aria-hidden="true" tabindex="-1"></a><span class="st">      absc[i] &lt;- ifelse(y.PA[i] == 0, y.PA.new[i], 0)</span></span>
-<span id="cb11-101"><a href="#cb11-101" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
-<span id="cb11-102"><a href="#cb11-102" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-103"><a href="#cb11-103" aria-hidden="true" tabindex="-1"></a><span class="st">    # Discrepancy measures for entire PA data set</span></span>
-<span id="cb11-104"><a href="#cb11-104" aria-hidden="true" tabindex="-1"></a><span class="st">    pres.n &lt;- sum(y.PA.new[] &gt; 0)</span></span>
-<span id="cb11-105"><a href="#cb11-105" aria-hidden="true" tabindex="-1"></a><span class="st">    absc.n &lt;- sum(y.PA.new[] == 0)</span></span>
-<span id="cb11-106"><a href="#cb11-106" aria-hidden="true" tabindex="-1"></a><span class="st">    r2_tjur &lt;- abs(sum(pres[])/pres.n - sum(absc[])/absc.n)</span></span>
-<span id="cb11-107"><a href="#cb11-107" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-108"><a href="#cb11-108" aria-hidden="true" tabindex="-1"></a><span class="st">    # for PO</span></span>
-<span id="cb11-109"><a href="#cb11-109" aria-hidden="true" tabindex="-1"></a><span class="st">    for (j in 1:n.PO)</span></span>
-<span id="cb11-110"><a href="#cb11-110" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
-<span id="cb11-111"><a href="#cb11-111" aria-hidden="true" tabindex="-1"></a><span class="st">      # Fit assessments: Freeman-Tukey test and posterior predictive check</span></span>
-<span id="cb11-112"><a href="#cb11-112" aria-hidden="true" tabindex="-1"></a><span class="st">      ppft[j] &lt;- (sqrt(y.PO[j]) - sqrt(lambda[j]))^2          # observed</span></span>
-<span id="cb11-113"><a href="#cb11-113" aria-hidden="true" tabindex="-1"></a><span class="st">      y.PO.new[j] ~ dpois(lambda[j])                          # replicate (new) data set</span></span>
-<span id="cb11-114"><a href="#cb11-114" aria-hidden="true" tabindex="-1"></a><span class="st">      ppft.new[j] &lt;- (sqrt(y.PO.new[j]) - sqrt(lambda[j]))^2  # expected</span></span>
-<span id="cb11-115"><a href="#cb11-115" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
-<span id="cb11-116"><a href="#cb11-116" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-117"><a href="#cb11-117" aria-hidden="true" tabindex="-1"></a><span class="st">    # Discrepancy measures for entire data set</span></span>
-<span id="cb11-118"><a href="#cb11-118" aria-hidden="true" tabindex="-1"></a><span class="st">    mean.abs.lambda.diff &lt;- mean(abs(lambda[] - y.PO[]))</span></span>
-<span id="cb11-119"><a href="#cb11-119" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-120"><a href="#cb11-120" aria-hidden="true" tabindex="-1"></a><span class="st">    # Add up discrepancy measures for entire data set</span></span>
-<span id="cb11-121"><a href="#cb11-121" aria-hidden="true" tabindex="-1"></a><span class="st">    fit.PO &lt;- sum(ppft[])                     </span></span>
-<span id="cb11-122"><a href="#cb11-122" aria-hidden="true" tabindex="-1"></a><span class="st">    fit.PO.new &lt;- sum(ppft.new[])             </span></span>
-<span id="cb11-123"><a href="#cb11-123" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-124"><a href="#cb11-124" aria-hidden="true" tabindex="-1"></a><span class="st">    # DERIVED QUANTITIES ------------------------------------------</span></span>
-<span id="cb11-125"><a href="#cb11-125" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-126"><a href="#cb11-126" aria-hidden="true" tabindex="-1"></a><span class="st">    # area in each time period, and temporal change of area</span></span>
-<span id="cb11-127"><a href="#cb11-127" aria-hidden="true" tabindex="-1"></a><span class="st">    A.pre &lt;- sum(P.pred[1:n.PO.half])</span></span>
-<span id="cb11-128"><a href="#cb11-128" aria-hidden="true" tabindex="-1"></a><span class="st">    A.post &lt;- sum(P.pred[(n.PO.half+1):n.PO])</span></span>
-<span id="cb11-129"><a href="#cb11-129" aria-hidden="true" tabindex="-1"></a><span class="st">    delta.A &lt;- A.post - A.pre</span></span>
-<span id="cb11-130"><a href="#cb11-130" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb11-131"><a href="#cb11-131" aria-hidden="true" tabindex="-1"></a><span class="st">    # uncertainty for the temporal change</span></span>
-<span id="cb11-132"><a href="#cb11-132" aria-hidden="true" tabindex="-1"></a><span class="st">    for (j in 1:n.PO.half)</span></span>
-<span id="cb11-133"><a href="#cb11-133" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
-<span id="cb11-134"><a href="#cb11-134" aria-hidden="true" tabindex="-1"></a><span class="st">      delta.Grid[j] &lt;- P.pred[n.PO.half+j] - P.pred[j]</span></span>
-<span id="cb11-135"><a href="#cb11-135" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
-<span id="cb11-136"><a href="#cb11-136" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
-<span id="cb11-137"><a href="#cb11-137" aria-hidden="true" tabindex="-1"></a><span class="st">&#39;</span>, <span class="at">file =</span> <span class="st">&#39;model/yaguarundi_model.txt&#39;</span>)</span></code></pre></div>
+<div id="prepare-data-for-jags" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> Prepare data for
+JAGS</h1>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>PA.X <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="st">&#39;(Intercept)&#39;</span><span class="ot">=</span> <span class="dv">1</span>, </span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.npp&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.npp,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_15&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.bio_15,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_7&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.bio_7,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.elev&#39;</span> <span class="ot">=</span> PA_pre_post<span class="sc">$</span>env.elev,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>              jagam.PA.time0, </span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>              jagam.PA.time1)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>PO.X <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="st">&#39;(Intercept)&#39;</span><span class="ot">=</span> <span class="dv">1</span>, </span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.npp&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.npp,</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_15&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.bio_15,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.bio_7&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.bio_7,</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>              <span class="st">&#39;env.elev&#39;</span> <span class="ot">=</span> PO_pre_post<span class="sc">$</span>env.elev,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>              jagam.PO.time0, </span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>              jagam.PO.time1)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="co"># number of all columns in X</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>n.X <span class="ot">=</span> <span class="fu">ncol</span>(PA.X)</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="co"># number of columns in X of spline basis functions</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>n.spl <span class="ot">=</span> <span class="fu">ncol</span>(jagam.PA.time0)</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="co"># number of columns in X of env. predictors + intercept</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>n.par <span class="ot">=</span> n.X <span class="sc">-</span> <span class="fu">ncol</span>(jagam.PA.time0)<span class="sc">*</span><span class="dv">2</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="co"># number of factors of time in X </span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>n.fac <span class="ot">=</span> <span class="fu">length</span>(<span class="fu">unique</span>(<span class="fu">as.factor</span>(PO_pre_post<span class="sc">$</span>time)))<span class="sc">*</span><span class="dv">2</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a><span class="co"># country as an indexed variable</span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>PO.country  <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">as.factor</span>(PO_pre_post<span class="sc">$</span>country))</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a><span class="co">#number of countries</span></span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>n.country <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(PO.country))</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>jags.data <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">n.PA =</span> <span class="fu">nrow</span>(PA_pre_post),</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>                  <span class="at">y.PA =</span> PA_pre_post<span class="sc">$</span>presabs, </span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>                  <span class="at">X.PA =</span> PA.X,</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>                  <span class="at">area.PA =</span> PA_pre_post<span class="sc">$</span>area,</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>                  <span class="at">effort =</span> PA_pre_post<span class="sc">$</span>effort,</span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.PO =</span> <span class="fu">nrow</span>(PO_pre_post),</span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.PO.half =</span> <span class="fu">nrow</span>(PO_pre_post)<span class="sc">/</span><span class="dv">2</span>,</span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>                  <span class="at">y.PO =</span> PO_pre_post<span class="sc">$</span>count, </span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>                  <span class="at">X.PO =</span> PO.X,</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>                  <span class="at">area.PO =</span> PO_pre_post<span class="sc">$</span>area, </span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>                  <span class="at">acce =</span> PO_pre_post<span class="sc">$</span>acce,</span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>                  <span class="at">country =</span> PO.country,</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.X =</span> n.X,</span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.cntr =</span> n.country,</span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.par =</span> n.par,</span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.fac =</span> n.fac,</span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>                  <span class="at">n.spl =</span> n.spl,</span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>                  <span class="at">Z =</span> <span class="fu">rep</span>(<span class="dv">0</span>, <span class="fu">length</span>(jagam.out<span class="sc">$</span>jags.data<span class="sc">$</span>zero)),</span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>                  <span class="at">S.pre =</span> jagam.out<span class="sc">$</span>jags.data<span class="sc">$</span>S1,</span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>                  <span class="at">S.post =</span> jagam.out<span class="sc">$</span>jags.data<span class="sc">$</span>S2) </span></code></pre></div>
 </div>
-<div id="inits-function" class="section level2" number="5.3">
-<h2><span class="header-section-number">5.3</span> Inits function</h2>
-<p>We are taking the parameters estimated in the <code>mgcv</code> GAM
-object, plus we add a bit of noise - just to give the algorithm some
-reasonable values to start with.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>jags.inits <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">model =</span> model.gam)</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>{</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(<span class="at">b=</span><span class="fu">rnorm</span>(n.X, <span class="at">mean=</span>model<span class="sc">$</span>coefficients, <span class="at">sd=</span><span class="dv">1</span>)))</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<div id="specify-the-model-in-bugs-language" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Specify the model in
+BUGS language</h1>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&#39;model</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="st">  { </span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="st">    # PRIORS --------------------------------------------------</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Thinning at locations with complete accessibility in PO data</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="st">      # intercept of the decay function for each country of origin. </span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="st">      # It needs a flat prior between 0 and 1</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="st">      for (c in 1:n.cntr) </span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="st">      {</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="st">        alpha0[c] ~ dbeta(1, 1)  </span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="st">      # steepness of the decaying distance-P.ret relationship in PO data</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="st">      alpha1 ~ dgamma(0.5, 0.05)   </span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Effect of sampling effort in PA data</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a><span class="st">      beta ~ dnorm(0, 0.01)</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Parametric effects of environment driving the point process intensity</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a><span class="st">     # (it also includes an intercept)</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="st">     </span></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a><span class="st">      for (r in 1:n.par)</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a><span class="st">      { </span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a><span class="st">        b[r] ~ dnorm(0,0.01) </span></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a><span class="st">    ## Splines (imported and adjusted form output of mgcv::jagam)</span></span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a><span class="st">      ## prior for s(X,Y):as.factor(time)0 </span></span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a><span class="st">      sigma.time1 &lt;- S.time1[1:n.spl, 1:n.spl] * gamma[1]  + </span></span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a><span class="st">                   S.time1[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]</span></span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a><span class="st">            b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.time1) </span></span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a><span class="st">     </span></span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a><span class="st">      ## prior for s(X,Y):as.factor(time)1</span></span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a><span class="st">      sigma.time2 &lt;- S.time2[1:n.spl, 1:n.spl] * gamma[3]  + </span></span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a><span class="st">                    S.time2[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]</span></span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a><span class="st">      b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.time2) </span></span>
+<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a><span class="st">     </span></span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a><span class="st">      ## Priors for smoothing parameter </span></span>
+<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a><span class="st">      for (f in 1:n.fac) </span></span>
+<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a><span class="st">      {</span></span>
+<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a><span class="st">        gamma[f] ~ dgamma(.5,.5)</span></span>
+<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a><span class="st">        rho[f] &lt;- log(gamma[f])</span></span>
+<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
+<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a><span class="st">    # LIKELIHOOD --------------------------------------------------</span></span>
+<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a><span class="st">      ## --- Presence-Absence (PA) data ---</span></span>
+<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a><span class="st">      </span></span>
+<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a><span class="st">       eta.PA &lt;- X.PA %*% b ## linear predictor</span></span>
+<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a><span class="st">        </span></span>
+<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a><span class="st">       for (i in 1:n.PA) </span></span>
+<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a><span class="st">       { </span></span>
+<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a><span class="st">         # the probability of presence</span></span>
+<span id="cb9-56"><a href="#cb9-56" aria-hidden="true" tabindex="-1"></a><span class="st">         cloglog(psi[i]) &lt;- eta.PA[i] + log(area.PA[i]) + beta*log(effort[i]) </span></span>
+<span id="cb9-57"><a href="#cb9-57" aria-hidden="true" tabindex="-1"></a><span class="st">        </span></span>
+<span id="cb9-58"><a href="#cb9-58" aria-hidden="true" tabindex="-1"></a><span class="st">         # presences and absences come from a Bernoulli distribution</span></span>
+<span id="cb9-59"><a href="#cb9-59" aria-hidden="true" tabindex="-1"></a><span class="st">         y.PA[i] ~ dbern(psi[i]*0.9999) </span></span>
+<span id="cb9-60"><a href="#cb9-60" aria-hidden="true" tabindex="-1"></a><span class="st">         </span></span>
+<span id="cb9-61"><a href="#cb9-61" aria-hidden="true" tabindex="-1"></a><span class="st">       } </span></span>
+<span id="cb9-62"><a href="#cb9-62" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb9-63"><a href="#cb9-63" aria-hidden="true" tabindex="-1"></a><span class="st">      ## --- Presence-Only (PO) data --- </span></span>
+<span id="cb9-64"><a href="#cb9-64" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb9-65"><a href="#cb9-65" aria-hidden="true" tabindex="-1"></a><span class="st">      eta.PO &lt;- X.PO %*% b  ## linear predictor</span></span>
+<span id="cb9-66"><a href="#cb9-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-67"><a href="#cb9-67" aria-hidden="true" tabindex="-1"></a><span class="st">      for (j in 1:n.PO)</span></span>
+<span id="cb9-68"><a href="#cb9-68" aria-hidden="true" tabindex="-1"></a><span class="st">      {</span></span>
+<span id="cb9-69"><a href="#cb9-69" aria-hidden="true" tabindex="-1"></a><span class="st">        # cell-specific probability of retainin (observing) a point is a function of accessibility</span></span>
+<span id="cb9-70"><a href="#cb9-70" aria-hidden="true" tabindex="-1"></a><span class="st">        P.ret[j] &lt;- alpha0[country[j]] * exp( (-alpha1) * acce[j]) </span></span>
+<span id="cb9-71"><a href="#cb9-71" aria-hidden="true" tabindex="-1"></a><span class="st">        </span></span>
+<span id="cb9-72"><a href="#cb9-72" aria-hidden="true" tabindex="-1"></a><span class="st">        # true mean number (nu) of points per cell i is the true intensity multiplied by cell area</span></span>
+<span id="cb9-73"><a href="#cb9-73" aria-hidden="true" tabindex="-1"></a><span class="st">        nu[j] &lt;- area.PO[j] * exp(eta.PO[j]) </span></span>
+<span id="cb9-74"><a href="#cb9-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-75"><a href="#cb9-75" aria-hidden="true" tabindex="-1"></a><span class="st">        # thinning: the true lambda</span></span>
+<span id="cb9-76"><a href="#cb9-76" aria-hidden="true" tabindex="-1"></a><span class="st">        lambda[j] &lt;- nu[j] * P.ret[j]</span></span>
+<span id="cb9-77"><a href="#cb9-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-78"><a href="#cb9-78" aria-hidden="true" tabindex="-1"></a><span class="st">        # counts of observed points come from a Poisson distribution</span></span>
+<span id="cb9-79"><a href="#cb9-79" aria-hidden="true" tabindex="-1"></a><span class="st">        y.PO[j] ~ dpois(lambda[j]) </span></span>
+<span id="cb9-80"><a href="#cb9-80" aria-hidden="true" tabindex="-1"></a><span class="st">      }</span></span>
+<span id="cb9-81"><a href="#cb9-81" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb9-82"><a href="#cb9-82" aria-hidden="true" tabindex="-1"></a><span class="st">    # PREDICTIONS -------------------------------------------------</span></span>
+<span id="cb9-83"><a href="#cb9-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-84"><a href="#cb9-84" aria-hidden="true" tabindex="-1"></a><span class="st">    eta.pred &lt;- X.PO %*% b</span></span>
+<span id="cb9-85"><a href="#cb9-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-86"><a href="#cb9-86" aria-hidden="true" tabindex="-1"></a><span class="st">    for (j in 1:n.PO)</span></span>
+<span id="cb9-87"><a href="#cb9-87" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
+<span id="cb9-88"><a href="#cb9-88" aria-hidden="true" tabindex="-1"></a><span class="st">      # predicted probability of occurrence in grid cell j</span></span>
+<span id="cb9-89"><a href="#cb9-89" aria-hidden="true" tabindex="-1"></a><span class="st">      cloglog(P.pred[j]) &lt;- eta.pred[j] + log(area.PO[j])</span></span>
+<span id="cb9-90"><a href="#cb9-90" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb9-91"><a href="#cb9-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-92"><a href="#cb9-92" aria-hidden="true" tabindex="-1"></a><span class="st">    # POSTERIOR PREDICTIVE CHECK  --------------------------------</span></span>
+<span id="cb9-93"><a href="#cb9-93" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb9-94"><a href="#cb9-94" aria-hidden="true" tabindex="-1"></a><span class="st">    # for PA</span></span>
+<span id="cb9-95"><a href="#cb9-95" aria-hidden="true" tabindex="-1"></a><span class="st">    for (i in 1:n.PA)</span></span>
+<span id="cb9-96"><a href="#cb9-96" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
+<span id="cb9-97"><a href="#cb9-97" aria-hidden="true" tabindex="-1"></a><span class="st">      # Fit assessments: Tjur R-Squared (fit statistic for logistic regression)</span></span>
+<span id="cb9-98"><a href="#cb9-98" aria-hidden="true" tabindex="-1"></a><span class="st">      pres[i] &lt;- ifelse(y.PA[i] &gt; 0, psi[i], 0)</span></span>
+<span id="cb9-99"><a href="#cb9-99" aria-hidden="true" tabindex="-1"></a><span class="st">      absc[i] &lt;- ifelse(y.PA[i] == 0, psi[i], 0)</span></span>
+<span id="cb9-100"><a href="#cb9-100" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb9-101"><a href="#cb9-101" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb9-102"><a href="#cb9-102" aria-hidden="true" tabindex="-1"></a><span class="st">    # Discrepancy measures for entire PA data set</span></span>
+<span id="cb9-103"><a href="#cb9-103" aria-hidden="true" tabindex="-1"></a><span class="st">    pres.n &lt;- sum(y.PA[] &gt; 0)</span></span>
+<span id="cb9-104"><a href="#cb9-104" aria-hidden="true" tabindex="-1"></a><span class="st">    absc.n &lt;- sum(y.PA[] == 0)</span></span>
+<span id="cb9-105"><a href="#cb9-105" aria-hidden="true" tabindex="-1"></a><span class="st">    r2_tjur &lt;- abs(sum(pres[])/pres.n - sum(absc[])/absc.n)</span></span>
+<span id="cb9-106"><a href="#cb9-106" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-107"><a href="#cb9-107" aria-hidden="true" tabindex="-1"></a><span class="st">    # for PO</span></span>
+<span id="cb9-108"><a href="#cb9-108" aria-hidden="true" tabindex="-1"></a><span class="st">    for (j in 1:n.PO)</span></span>
+<span id="cb9-109"><a href="#cb9-109" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
+<span id="cb9-110"><a href="#cb9-110" aria-hidden="true" tabindex="-1"></a><span class="st">      # Fit assessments: Posterior predictive check and data for DHARMA</span></span>
+<span id="cb9-111"><a href="#cb9-111" aria-hidden="true" tabindex="-1"></a><span class="st">      y.PO.new[j] ~ dpois(lambda[j]) </span></span>
+<span id="cb9-112"><a href="#cb9-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-113"><a href="#cb9-113" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb9-114"><a href="#cb9-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-115"><a href="#cb9-115" aria-hidden="true" tabindex="-1"></a><span class="st">    # DERIVED QUANTITIES ------------------------------------------</span></span>
+<span id="cb9-116"><a href="#cb9-116" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb9-117"><a href="#cb9-117" aria-hidden="true" tabindex="-1"></a><span class="st">    # area in each time period, and temporal change of area</span></span>
+<span id="cb9-118"><a href="#cb9-118" aria-hidden="true" tabindex="-1"></a><span class="st">    A.time1 &lt;- sum(P.pred[1:n.PO.half])</span></span>
+<span id="cb9-119"><a href="#cb9-119" aria-hidden="true" tabindex="-1"></a><span class="st">    A.time2 &lt;- sum(P.pred[(n.PO.half+1):n.PO])</span></span>
+<span id="cb9-120"><a href="#cb9-120" aria-hidden="true" tabindex="-1"></a><span class="st">    delta.A &lt;- A.time2 - A.time1</span></span>
+<span id="cb9-121"><a href="#cb9-121" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb9-122"><a href="#cb9-122" aria-hidden="true" tabindex="-1"></a><span class="st">    # uncertainty for the temporal change</span></span>
+<span id="cb9-123"><a href="#cb9-123" aria-hidden="true" tabindex="-1"></a><span class="st">    for (j in 1:n.PO.half)</span></span>
+<span id="cb9-124"><a href="#cb9-124" aria-hidden="true" tabindex="-1"></a><span class="st">    {</span></span>
+<span id="cb9-125"><a href="#cb9-125" aria-hidden="true" tabindex="-1"></a><span class="st">      delta.Grid[j] &lt;- P.pred[n.PO.half+j] - P.pred[j]</span></span>
+<span id="cb9-126"><a href="#cb9-126" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb9-127"><a href="#cb9-127" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
+<span id="cb9-128"><a href="#cb9-128" aria-hidden="true" tabindex="-1"></a><span class="st">&#39;</span>, <span class="at">file =</span>  <span class="st">&#39;model/yaguarundi_model.txt&#39;</span>)</span></code></pre></div>
+<div id="inits-function" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Inits function</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>jags.inits <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">model =</span> model.gam)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">list</span>(<span class="at">b=</span><span class="fu">rnorm</span>(n.X, <span class="at">mean=</span>model<span class="sc">$</span>coefficients, <span class="at">sd=</span><span class="dv">1</span>)))</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
 </div>
-<div id="fit-the-model" class="section level2" number="5.4">
-<h2><span class="header-section-number">5.4</span> Fit the model</h2>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>start.time <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>yaguarundi_model <span class="ot">&lt;-</span> R2jags<span class="sc">::</span><span class="fu">jags</span>(<span class="at">data=</span>jags.data,</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">model.file=</span><span class="st">&#39;model/yaguarundi_model.txt&#39;</span>,</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">parameters.to.save=</span><span class="fu">c</span>(<span class="st">&#39;b&#39;</span>, <span class="st">&#39;P.pred&#39;</span>, </span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;A.pre&#39;</span>, <span class="st">&#39;A.post&#39;</span>, <span class="st">&#39;delta.A&#39;</span>,</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;alpha0&#39;</span>, <span class="st">&#39;alpha1&#39;</span>, <span class="st">&#39;beta&#39;</span>,</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;lambda&#39;</span>, <span class="st">&#39;P.ret&#39;</span>, <span class="st">&#39;psi&#39;</span>,</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;y.PO.new&#39;</span>, <span class="st">&#39;y.PA.new&#39;</span>,</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;r2_tjur&#39;</span>, </span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;fit.PO&#39;</span>, <span class="st">&#39;fit.PO.new&#39;</span>,</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;mean.abs.lambda.diff&#39;</span>,</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;delta.Grid&#39;</span>),</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">inits =</span> jags.inits,</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">n.chains=</span><span class="dv">3</span>,</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">n.iter=</span><span class="dv">100000</span>,</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">n.thin=</span><span class="dv">10</span>,</span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">n.burnin=</span><span class="dv">10000</span>,</span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">DIC =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
-<pre><code>## module glm loaded</code></pre>
-<pre><code>## module dic loaded</code></pre>
-<pre><code>## Compiling model graph
-##    Resolving undeclared variables
-##    Allocating nodes
-## Graph information:
-##    Observed stochastic nodes: 5318
-##    Unobserved stochastic nodes: 5358
-##    Total graph size: 210845
-## 
-## Initializing model
-## 
-##   |++++++++++++++++++++++++++++++++++++++++++++++++++| 100%
-##   |**************************************************| 100%</code></pre>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>end.time <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>time.taken <span class="ot">&lt;-</span> end.time <span class="sc">-</span> start.time</span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>time.taken</span></code></pre></div>
-<pre><code>## Time difference of 3.425978 hours</code></pre>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># save the fitted model to a file</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="co"># saveRDS(yaguarundi_model, &#39;data/yaguarundi_model_fit.rds&#39;)</span></span></code></pre></div>
 </div>
+<div id="fit-the-model" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Fit the model</h1>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>start.time <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>yaguarundi_model <span class="ot">&lt;-</span> R2jags<span class="sc">::</span><span class="fu">jags</span>(<span class="at">data=</span>jags.data,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">model.file=</span><span class="st">&#39;model/yaguarundi_model.txt&#39;</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">parameters.to.save=</span><span class="fu">c</span>(<span class="st">&#39;b&#39;</span>, <span class="st">&#39;P.pred&#39;</span>, </span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;A.pre&#39;</span>, <span class="st">&#39;A.post&#39;</span>, <span class="st">&#39;delta.A&#39;</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;alpha0&#39;</span>, <span class="st">&#39;alpha1&#39;</span>, <span class="st">&#39;beta&#39;</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;lambda&#39;</span>, <span class="st">&#39;P.ret&#39;</span>, <span class="st">&#39;psi&#39;</span>,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;y.PO.new&#39;</span>, <span class="st">&#39;r2_tjur&#39;</span>, </span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>                                                      <span class="st">&#39;delta.Grid&#39;</span>),</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">inits =</span> jags.inits,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">n.chains=</span><span class="dv">3</span>,</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">n.iter=</span><span class="dv">100000</span>,</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">n.thin=</span><span class="dv">10</span>,</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">n.burnin=</span><span class="dv">10000</span>,</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">DIC =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>end.time <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>time.taken <span class="ot">&lt;-</span> end.time <span class="sc">-</span> start.time</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>time.taken</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a><span class="co"># saveRDS(yaguarundi_model, &#39;big_data/yaguarundi_model_fit.rds&#39;)</span></span></code></pre></div>
 </div>
 
 
