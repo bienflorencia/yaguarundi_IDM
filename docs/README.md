@@ -273,8 +273,8 @@ For more details please see [here](/docs/model_definitions.md)
   <tr>
    <td style="text-align:left;"> A.time1 </td>
    <td style="text-align:left;"> range area in the first time period (time1) </td>
-   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large A_{pre1}}#gh-light-mode-only">
-                                 <img src="https://render.githubusercontent.com/render/math?math={\Large A_{pre}}#gh-dark-mode-only"></td>
+   <td style="text-align:left;"> <img src="https://render.githubusercontent.com/render/math?math={\Large A_{pre_1}}#gh-light-mode-only">
+                                 <img src="https://render.githubusercontent.com/render/math?math={\Large A_{pre_1}}#gh-dark-mode-only"></td>
   </tr>
   <tr>
    <td style="text-align:left;"> A.time2 </td>
