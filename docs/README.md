@@ -291,4 +291,5 @@ For more details please see [here](/docs/model_definitions.md)
 </tbody>
 </table>
 
+$A_{time2}$
 $\sqrt{3x-1}+(1+x)^2$
