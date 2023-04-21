@@ -1,16 +1,17 @@
 ---
 title: 'Yaguarundí IDM'
 author: 'Florencia Grattarola, Diana Bowler & Petr Keil'
-date: "2023-03-13"
-output: 
-  html_document: 
+date: '2022-09-08'
+output:
+  html_document:
     keep_md: yes
+    toc: yes
+    toc_float: yes
     highlight: pygments
     theme: flatly
-    number_sections: yes
 ---
 
-Analysis for the Yaguarundí (*Herpailurus yagouaroundi*), with new covariates: `npp`, `elev`, `bio7`, and `bio15`.
+Analysis for the *Herpailurus yagouaroundi*, with new covariates: `npp`, `elev`, `bio7`, and `bio15`.
 
   - Libraries
 
@@ -26,19 +27,21 @@ library(tidyverse)
 
 ```r
 # Presence-absence data
-PA_pre <- readRDS('data/PA_pre.rds') %>% 
+PA_time1 <- readRDS('data/data_hyagouaroundi_PA_time1.rds') %>%
   filter(!is.na(env.npp) &!is.na(env.bio_15) & !is.na(env.bio_7) & !is.na(env.elev)) # remove NA's
-PA_post <- readRDS('data/PA_post.rds') %>% 
+PA_time2 <- readRDS('data/data_hyagouaroundi_PA_time2.rds') %>%
   filter(!is.na(env.npp) &!is.na(env.bio_15) & !is.na(env.bio_7) & !is.na(env.elev)) # remove NA's
+
 
 # Presence-only data
-PO_pre <- readRDS('data/PO_pre.rds') %>% 
+PO_time1 <- readRDS('data/data_hyagouaroundi_PO_time1.rds') %>%
   filter(!is.na(env.npp) &!is.na(env.bio_15) & !is.na(env.bio_7) & !is.na(env.elev) & !is.na(acce) & !is.na(count)) # remove NA's
-PO_post  <- readRDS('data/PO_post.rds') %>% 
+PO_time2  <- readRDS('data/data_hyagouaroundi_PO_time2.rds')  %>%
   filter(!is.na(env.npp) &!is.na(env.bio_15) & !is.na(env.bio_7) & !is.na(env.elev) & !is.na(acce) & !is.na(count)) # remove NA's
 
-PA_pre_post <- rbind(PA_pre %>% mutate(time=0), PA_post %>% mutate(time=1)) 
-PO_pre_post <- rbind(PO_pre %>% mutate(time=0), PO_post %>% mutate(time=1)) 
+
+PA_time1_time2 <- rbind(PA_time1 %>% mutate(time=1), PA_time2 %>% mutate(time=2)) 
+PO_time1_time2 <- rbind(PO_time1 %>% mutate(time=1), PO_time2 %>% mutate(time=2))
 ```
 
 
@@ -62,7 +65,7 @@ gam.formula <- formula(count ~ env.npp +
                                s(X, Y, by=as.factor(time), k=k))
 
 model.gam <- mgcv::gam(gam.formula, 
-                       data = PO_pre_post,
+                       data = PO_time1_time2,
                        family = poisson)
 
 summary(model.gam)
@@ -89,8 +92,8 @@ summary(model.gam)
 ## 
 ## Approximate significance of smooth terms:
 ##                           edf Ref.df Chi.sq p-value    
-## s(X,Y):as.factor(time)0 8.974      9  212.6  <2e-16 ***
-## s(X,Y):as.factor(time)1 8.987      9  555.3  <2e-16 ***
+## s(X,Y):as.factor(time)1 8.974      9  212.6  <2e-16 ***
+## s(X,Y):as.factor(time)2 8.987      9  555.3  <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -105,7 +108,7 @@ To get spline values for both types of data we first run the code for one type o
 
 ```r
 jagam.out <- mgcv::jagam(gam.formula, 
-                         data = PO_pre_post,
+                         data = PO_time1_time2,
                          family = poisson,
                          file='') # we will not need this file
 ```
@@ -117,10 +120,10 @@ jagam.out <- mgcv::jagam(gam.formula,
 ##   for (i in 1:n) { y[i] ~ dpois(mu[i]) } ## response 
 ##   ## Parametric effect priors CHECK tau=1/8.8^2 is appropriate!
 ##   for (i in 1:5) { b[i] ~ dnorm(0,0.013) }
-##   ## prior for s(X,Y):as.factor(time)0... 
+##   ## prior for s(X,Y):as.factor(time)1... 
 ##   K1 <- S1[1:9,1:9] * lambda[1]  + S1[1:9,10:18] * lambda[2]
 ##   b[6:14] ~ dmnorm(zero[6:14],K1) 
-##   ## prior for s(X,Y):as.factor(time)1... 
+##   ## prior for s(X,Y):as.factor(time)2... 
 ##   K2 <- S2[1:9,1:9] * lambda[3]  + S2[1:9,10:18] * lambda[4]
 ##   b[15:23] ~ dmnorm(zero[15:23],K2) 
 ##   ## smoothing parameter priors CHECK...
@@ -132,16 +135,16 @@ jagam.out <- mgcv::jagam(gam.formula,
 ```
 
 ```r
-smooth0 <- jagam.out$pregam$smooth[[1]]
-smooth1 <- jagam.out$pregam$smooth[[2]]
+smooth1 <- jagam.out$pregam$smooth[[1]]
+smooth2 <- jagam.out$pregam$smooth[[2]]
 
 # presence-only data
-jagam.PO.time0 <- mgcv::PredictMat(object = smooth0, data = PO_pre_post)
-jagam.PO.time1 <- mgcv::PredictMat(object = smooth1, data = PO_pre_post)
+jagam.PO.time1 <- mgcv::PredictMat(object = smooth1, data = PO_time1_time2)
+jagam.PO.time2 <- mgcv::PredictMat(object = smooth2, data = PO_time1_time2)
 
 # presence-absence data
-jagam.PA.time0 <- mgcv::PredictMat(object = smooth0, data = PA_pre_post)
-jagam.PA.time1 <- mgcv::PredictMat(object = smooth1, data = PA_pre_post)
+jagam.PA.time1 <- mgcv::PredictMat(object = smooth1, data = PA_time1_time2)
+jagam.PA.time2 <- mgcv::PredictMat(object = smooth2, data = PA_time1_time2)
 ```
 
 # Prepare data for JAGS
@@ -149,50 +152,50 @@ jagam.PA.time1 <- mgcv::PredictMat(object = smooth1, data = PA_pre_post)
 
 ```r
 PA.X <- cbind('(Intercept)'= 1, 
-              'env.npp' = PA_pre_post$env.npp,
-              'env.bio_15' = PA_pre_post$env.bio_15,
-              'env.bio_7' = PA_pre_post$env.bio_7,
-              'env.elev' = PA_pre_post$env.elev,
-              jagam.PA.time0, 
-              jagam.PA.time1)
+              'env.npp' = PA_time1_time2$env.npp,
+              'env.bio_15' = PA_time1_time2$env.bio_15,
+              'env.bio_7' = PA_time1_time2$env.bio_7,
+              'env.elev' = PA_time1_time2$env.elev,
+              jagam.PA.time1, 
+              jagam.PA.time2)
 
 PO.X <- cbind('(Intercept)'= 1, 
-              'env.npp' = PO_pre_post$env.npp,
-              'env.bio_15' = PO_pre_post$env.bio_15,
-              'env.bio_7' = PO_pre_post$env.bio_7,
-              'env.elev' = PO_pre_post$env.elev,
-              jagam.PO.time0, 
-              jagam.PO.time1)
+              'env.npp' = PO_time1_time2$env.npp,
+              'env.bio_15' = PO_time1_time2$env.bio_15,
+              'env.bio_7' = PO_time1_time2$env.bio_7,
+              'env.elev' = PO_time1_time2$env.elev,
+              jagam.PO.time1, 
+              jagam.PO.time2)
 
 # number of all columns in X
 n.X = ncol(PA.X)
 
 # number of columns in X of spline basis functions
-n.spl = ncol(jagam.PA.time0)
+n.spl = ncol(jagam.PA.time1)
 
 # number of columns in X of env. predictors + intercept
-n.par = n.X - ncol(jagam.PA.time0)*2
+n.par = n.X - ncol(jagam.PA.time1)*2
 
 # number of factors of time in X 
-n.fac = length(unique(as.factor(PO_pre_post$time)))*2
+n.fac = length(unique(as.factor(PO_time1_time2$time)))*2
 
 # country as an indexed variable
-PO.country  <- as.numeric(as.factor(PO_pre_post$country))
+PO.country  <- as.numeric(as.factor(PO_time1_time2$country))
 
 #number of countries
 n.country <- length(unique(PO.country))
 
-jags.data <- list(n.PA = nrow(PA_pre_post),
-                  y.PA = PA_pre_post$presabs, 
+jags.data <- list(n.PA = nrow(PA_time1_time2),
+                  y.PA = PA_time1_time2$presabs, 
                   X.PA = PA.X,
-                  area.PA = PA_pre_post$area,
-                  effort = PA_pre_post$effort,
-                  n.PO = nrow(PO_pre_post),
-                  n.PO.half = nrow(PO_pre_post)/2,
-                  y.PO = PO_pre_post$count, 
+                  area.PA = PA_time1_time2$area,
+                  effort = PA_time1_time2$effort,
+                  n.PO = nrow(PO_time1_time2),
+                  n.PO.half = nrow(PO_time1_time2)/2,
+                  y.PO = PO_time1_time2$count, 
                   X.PO = PO.X,
-                  area.PO = PO_pre_post$area, 
-                  acce = PO_pre_post$acce,
+                  area.PO = PO_time1_time2$area, 
+                  acce = PO_time1_time2$acce,
                   country = PO.country,
                   n.X = n.X,
                   n.cntr = n.country,
@@ -200,8 +203,8 @@ jags.data <- list(n.PA = nrow(PA_pre_post),
                   n.fac = n.fac,
                   n.spl = n.spl,
                   Z = rep(0, length(jagam.out$jags.data$zero)),
-                  S.pre = jagam.out$jags.data$S1,
-                  S.post = jagam.out$jags.data$S2) 
+                  S.time1 = jagam.out$jags.data$S1,
+                  S.time2 = jagam.out$jags.data$S2) 
 ```
 
 # Specify the model in BUGS language
@@ -237,14 +240,14 @@ cat('model
       
     ## Splines (imported and adjusted form output of mgcv::jagam)
     
-      ## prior for s(X,Y):as.factor(time)0 
+      ## prior for s(X,Y):as.factor(time)1 
       sigma.time1 <- S.time1[1:n.spl, 1:n.spl] * gamma[1]  + 
-                   S.time1[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]
-            b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.time1) 
+                     S.time1[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]
+      b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.time1) 
      
-      ## prior for s(X,Y):as.factor(time)1
+      ## prior for s(X,Y):as.factor(time)2
       sigma.time2 <- S.time2[1:n.spl, 1:n.spl] * gamma[3]  + 
-                    S.time2[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]
+                     S.time2[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]
       b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.time2) 
      
       ## Priors for smoothing parameter 
@@ -335,7 +338,7 @@ cat('model
       delta.Grid[j] <- P.pred[n.PO.half+j] - P.pred[j]
     }
   }
-', file =  'model/yaguarundi_model.txt')
+', file = 'model/yaguarundi_model.txt')
 ```
 
 
@@ -358,7 +361,7 @@ start.time <- Sys.time()
 yaguarundi_model <- R2jags::jags(data=jags.data,
                                  model.file='model/yaguarundi_model.txt',
                                  parameters.to.save=c('b', 'P.pred', 
-                                                      'A.pre', 'A.post', 'delta.A',
+                                                      'A.time1', 'A.time2', 'delta.A',
                                                       'alpha0', 'alpha1', 'beta',
                                                       'lambda', 'P.ret', 'psi',
                                                       'y.PO.new', 'r2_tjur', 

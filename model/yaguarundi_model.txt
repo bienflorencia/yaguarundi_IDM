@@ -27,14 +27,14 @@ model
       
     ## Splines (imported and adjusted form output of mgcv::jagam)
     
-      ## prior for s(X,Y):as.factor(time)0 
+      ## prior for s(X,Y):as.factor(time)1 
       sigma.time1 <- S.time1[1:n.spl, 1:n.spl] * gamma[1]  + 
-                   S.time1[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]
-            b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.time1) 
+                     S.time1[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[2]
+      b[(n.par+1):(n.spl + n.par)] ~ dmnorm(Z[(n.par+1):(n.spl + n.par)], sigma.time1) 
      
-      ## prior for s(X,Y):as.factor(time)1
+      ## prior for s(X,Y):as.factor(time)2
       sigma.time2 <- S.time2[1:n.spl, 1:n.spl] * gamma[3]  + 
-                    S.time2[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]
+                     S.time2[1:n.spl, (n.spl + 1):(n.spl * 2)] * gamma[4]
       b[(n.X - n.spl + 1):(n.X)] ~ dmnorm(Z[(n.X - n.spl + 1):(n.X)], sigma.time2) 
      
       ## Priors for smoothing parameter 
