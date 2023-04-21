@@ -15,204 +15,471 @@ output:
 knitr::opts_chunk$set(dpi=300, echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
+Analysis for the *Herpailurus yagouaroundi*, with the covariates `bio7`, `bio15`, `npp`, and `elev`.
 
-```{r libraries}
-# spatial libraries
+# Species data (PA & PO)
+
+  - R Libraries
+
+```{r}
+#| message: false
+#| label: libraries
+library(knitr)
+library(lubridate)
 library(tmap)
+library(leaflet)
+library(patchwork)
 library(terra)
 library(sf)
+sf::sf_use_s2(FALSE)
 library(tidyverse)
 ```
 
-# Get the data
+  - Basemaps
 
-## Basemaps
-```{r, message = FALSE, warning=FALSE}
+```{r}
+#| label: basemaps
+#| echo: true
+#| eval: true
+#| message: false
+
+equalareaCRS <-  '+proj=laea +lon_0=-73.125 +lat_0=0 +datum=WGS84 +units=m +no_defs'
+Latam_projected <- st_read('data/Latam_vector.shp', quiet = T)
+Latam_countries <- sf::st_read('data/Latam_vector_countries.shp', quiet = T) %>% sf::st_transform(crs=equalareaCRS)
+Latam <- st_union(st_make_valid(Latam_projected))
 Latam.raster <- terra::rast('data/Latam_raster.tif')
-Latam_countries <- terra::rast('data/Latam_raster_countries.tif')
+Latam.raster.countries <- terra::rast('data/Latam_raster_countries.tif')
+
+# IUCN range distribution
+yaguarundi_IUCN <- sf::st_read('big_data/yaguarundi_IUCN.shp', quiet = T) %>% sf::st_transform(crs=equalareaCRS)
+
+MAP.IUCN <- tm_graticules(alpha = 0.3) +
+    tm_shape(Latam_countries) +
+    tm_fill(col='grey90') +
+    tm_borders(col='grey60', alpha = 0.4) +
+    tm_shape(yaguarundi_IUCN) +
+    tm_fill(col='grey20', alpha = 0.4) +
+    tm_layout(legend.outside = T, frame.lwd = 0.3, scale=1.2, legend.outside.size = 0.1)
+
+MAP.IUCN
 ```
 
-## Covariates 
+  - PA and PO datasets
 
- - Elevation  
- - Net Primary Productivity  
- - Bio 4: Temperature Seasonality 
- - Bio 7: Temperature Annual Range
- - Bio 10: Mean Temperature of Warmest Quarter
- - Bio 13: Precipitation of Wettest Month
- - Bio 15: Precipitation Seasonality (Coefficient of Variation)
-
-We area going to assume climate is constant and use **WorldClim** data. We could also use **TerraClimate** (`climateR` package). Later, we will consider CHELSEA  (1901-2016) and make a cutoff at 1996.  
-
-``` {r, message = FALSE, warning=FALSE, echo=F, eval=F}
-# for specifications on how these data were prepared see covariates_and_thinning_parameters.Rmd
-elev <- terra::rast('big_data/elev.tif')
-bio <- terra::rast('big_data/bio.tif')
-
-npp_pre <- terra::rast('big_data/npp_pre.tif')
-npp_pos <- terra::rast('big_data/npp_pos.tif')
-npp <- mean(c(npp_pre, npp_pos), na.rm=T)
-names(npp) <- 'npp'
-npp <- resample(npp, elev, method='bilinear') 
-
-# environmental layers for PA
-env <- c(elev, bio[[c(4,7,10,13,15)]], npp) %>% 
-  classify(cbind(NaN, NA))
-
-# resample and scaled values for PO
-env_100k_resampled <- terra::resample(env, Latam.raster, method='bilinear') %>% 
-  classify(cbind(NaN, NA)) %>% scale() # scaled values to 0 mean and sd of 1
+```{r}
+#| label: data
+#| echo: true
+#| eval: true
+#| message: false
+data_carnivores_PO <- read_csv('data/data_PO.csv')
+data_carnivores_PA <- read_csv('data/data_PA.csv')
 ```
 
-### Alternative for all variables
-``` {r, message = FALSE, warning=FALSE, eval=F}
-# for specifications on how these data were prepared see covariates_and_thinning_parameters.Rmd
-elev <-  rast('big_data/elev.tif')
-bio <- rast('big_data/bio.tif')
+Check data for each years on example species
 
-npp_pre <- terra::rast('big_data/npp_pre.tif')
-npp_pos <- terra::rast('big_data/npp_pos.tif')
-npp <- mean(c(npp_pre, npp_pos), na.rm=T)
-rm(npp_pre, npp_pos)
-npp <- resample(npp, elev, method='bilinear')
-names(npp) <- 'npp'
+```{r}
+#| label: data-check
+#| echo: true
+#| eval: true
+#| message: false
+#| tbl-cap: 
+#|   - 'PO data'
+#|   - 'PA data'
 
-tree_pre <- terra::rast('big_data/veg_pre.tif')
-tree_pos <- terra::rast('big_data/veg_pos.tif')
-tree <- mean(c(tree_pre, tree_pos), na.rm=T)
-rm(tree_pre, tree_pos)
-tree <- resample(tree, elev, method='bilinear')
-names(tree) <- 'tree'
+# Presence-only
+data_carnivores_PO %>% filter(species == 'Herpailurus yagouaroundi') %>% filter(year>=2000) %>% 
+  mutate(period=ifelse(year<=2013, 'first period: 2000-2013', 'second period: 2014-2021')) %>%
+  group_by(species, period) %>% count() %>% pivot_wider(names_from = 'period', values_from = n) %>% kable()
 
-nontree_pre <- terra::rast('big_data/nontree_pre.tif')
-nontree_pos <- terra::rast('big_data/nontree_pos.tif')
-nontree <- mean(c(nontree_pre, nontree_pos), na.rm=T)
-rm(nontree_pre, nontree_pos) # to free memory
-nontree <- resample(nontree, elev, method='bilinear')
-names(nontree) <- 'nontree'
-
-# environmental layers for PA
-env <- c(elev, bio, npp, tree, nontree) %>% 
-  classify(cbind(NaN, NA))
-
-# rm(elev, bio) # to free memory
-# file.remove(terra::sources(npp), terra::sources(tree), terra::sources(nontree))
-# terra::writeRaster(env, 'big_data/env.tif', overwrite=T)
-#tmpFiles(remove=T) # to free memory
-
-land_pre <- terra::rast('big_data/land_pre.tif')
-land_pos <- terra::rast('big_data/land_pos.tif')
-land <- modal(c(land_pre, land_pos), na.rm=T)
-rm(land_pre, land_pos)
-land <- resample(land, elev, method='near')
-names(land) <- 'land'
-rm(land_pre, land_pos)
-# terra::writeRaster(land, 'big_data/land.tif', overwrite=T)
-```
-
-```{r covariates}
-env <- terra::rast('big_data/env.tif')
-land <- terra::rast('big_data/land.tif')
-
-# resample and scaled values for PO
-env_100k_resampled <- terra::resample(env, Latam.raster, method='bilinear') %>% 
-  classify(cbind(NaN, NA)) %>% scale() # scaled values to 0 mean and sd of 1
-
-land_100k_resampled <- terra::resample(land, Latam.raster, method='near') %>% 
-  classify(cbind(NaN, NA)) 
+# Presence-absence
+data_carnivores_PA %>% filter(species == 'Herpailurus yagouaroundi' & presence ==1) %>% 
+  mutate(period=ifelse(year(date_start)<=2013, 'first period: 2000-2013', 'second period: 2014-2021')) %>%
+  group_by(species, period) %>% count() %>% pivot_wider(names_from = 'period', values_from = n) %>% kable()
 ```
 
 
-## Thinning parametres 
+## Presence-absence data
 
- - Accessibility  
- - Country of origin (GBIF)
- 
-``` {r, message = FALSE, warning=FALSE}
-# for specifications on how these data were prepared see covariates_and_thinning_parameters.Rmd
-acce <- terra::rast('big_data/acce.tif')
-acce_100k <- terra::resample(x= acce, y = Latam.raster, method = 'bilinear') %>% 
-  classify(cbind(NaN, NA)) 
+### Create blobs.
 
-# scaled values
-acce_100k_resampled <- acce_100k / max(acce_100k[], na.rm=T)
+Blobs contain data on total effort, total temporal span, a list of the records IDs that are included for the blob and an area size of the combined areas.
+
+```{r}
+#| echo: true
+#| eval: true
+#| label: blobs
+#| message: false
+#| warning: false
+
+data_PA_GIS <- data_carnivores_PA %>% 
+  filter(species == 'Herpailurus yagouaroundi') %>% 
+  mutate(year=lubridate::year(date_end)) %>% 
+  filter(year>=2000, year<=2021) %>% 
+  as.data.frame() %>% 
+  sf::st_as_sf(coords=c('decimalLongitude', 'decimalLatitude')) %>% 
+  st_set_crs(4326) 
+
+PA <- st_transform(data_PA_GIS, crs=equalareaCRS)
+
+# create a blob for all sites
+# blobs are definded as areas where some sampling was done over the entire period
+periodStart <- ymd('2000-01-01')
+periodEnd <- ymd('2014-01-01')
+periodMax <- ymd('2020-12-31')
+
+PA_allsites <- PA %>%
+  mutate(start_date=as_date(ifelse(date_end-date_start<0, date_end, date_start)),
+         end_date=as_date(ifelse(date_end-date_start<0, date_start, date_end))) %>%
+  mutate(span=interval(date_start, date_end),
+         target= interval(periodEnd, today()),
+         period=ifelse(span %within% target, 'time2', 'time1')) %>% 
+  distinct(independentLocation, period, .keep_all = T) 
+
+PA_allsites_buff <- st_buffer(PA_allsites, sqrt(PA_allsites$area_m2/pi))
+
+blobs_time1 <- PA_allsites_buff %>% filter(period=='time1') %>% 
+  st_union() %>% st_cast('POLYGON') %>% st_sf('ID'= 1:length(.)) 
+blobs_time2 <- PA_allsites_buff %>% filter(period=='time2') %>% 
+  st_union() %>% st_cast('POLYGON') %>% st_sf('ID'= 1:length(.)) 
+
+
+# to calculate the effort in days for each blob, we need to differenciate the two periods
+PA_allsites_effort_and_time  <- PA %>%
+  mutate(start_date=as_date(ifelse(date_end-date_start<0, date_end, date_start)),
+         end_date=as_date(ifelse(date_end-date_start<0, date_start, date_end))) %>%
+  mutate(span=interval(date_start, date_end),
+         target= interval(periodEnd, today()),
+         period=ifelse(span %within% target, 'time2', 'time1')) %>% 
+  group_by(independentLocation, independentYearSpan, area_m2) %>%
+  summarise(effort=max(effort),
+            period=paste(unique(period)),
+            recordIDs=paste(unique(recordID), collapse = ';'),
+            maxEndDate=max(end_date),
+            minStartDate=min(start_date)) %>% 
+  mutate(maxTemporalSpan= maxEndDate-minStartDate)
+
+# to calculate the effort in days for each blob, we need to differenciate the two periods
+blobs_efforttime_time1 <- st_join(blobs_time1, 
+                            PA_allsites_effort_and_time %>% filter(period=='time1'),
+                            left=TRUE)  %>% 
+  group_by(ID) %>% 
+  summarise(effort=sum(effort),
+            temporalSpan=sum(maxTemporalSpan),
+            recordIDs=paste(unique(recordIDs), collapse = ';')) %>% 
+  mutate(blobArea=st_area(.)) 
+
+
+blobs_efforttime_time2 <- st_join(blobs_time2, 
+                                PA_allsites_effort_and_time %>% filter(period=='time2'),
+                                left=TRUE)  %>% 
+  group_by(ID) %>% 
+  summarise(effort=sum(effort),
+            temporalSpan=sum(maxTemporalSpan),
+            recordIDs=paste(unique(recordIDs), collapse = ';')) %>% 
+  mutate(blobArea=st_area(.))
+
 ```
 
-# Example case 
+### Calculate PA blobs
 
-The data used as an example will be for Herpailurus yagouaroundi.
+```{r}
+#| echo: true
+#| eval: true
+#| label: PA-data
+#| message: false
+#| warning: false
+
+# function  to create blobs for time1 and time2 for each species
+calculate_PA_sp_blobs <- function(PA, blobs, sp, time){
+  periodStart <- ymd('2000-01-01')
+  periodEnd <- ymd('2014-01-01')
+  df_period <- PA %>% filter(species==sp & presence==1) %>% 
+    filter(date_start>=periodStart) %>% 
+    mutate(span=interval(date_start, date_end),
+           target=interval(periodEnd, today()),
+           period=ifelse(span %within% target, 'time2', 'time1')) %>% 
+    filter(period==time) %>% select(species, presence)
+  
+  df_period_blobs <- st_join(blobs, df_period,
+                             left=TRUE, join = st_contains) %>%
+    group_by(ID) %>% 
+    summarise(presence=max(presence),
+              temporalSpan=max(temporalSpan),
+              effort=max(effort),
+              blobArea=max(blobArea)) %>% 
+    mutate(presence=ifelse(is.na(presence), 0, presence))
+  return(df_period_blobs)
+}
+
+# Herpailurus yagouaroundi
+PA_hyagouaroundi_time1_blobs <- calculate_PA_sp_blobs(PA, blobs_efforttime_time1, 'Herpailurus yagouaroundi', 'time1')
+PA_hyagouaroundi_time2_blobs <- calculate_PA_sp_blobs(PA, blobs_efforttime_time2, 'Herpailurus yagouaroundi', 'time2')
+```
+
+### Plots
+
+```{r}
+#| echo: true
+#| eval: true
+#| label: PA-plots
+#| message: false
+#| warning: false
+
+data_PA_time1_time2 <- rbind(PA_hyagouaroundi_time1_blobs %>% mutate(period='time1'), 
+                             PA_hyagouaroundi_time2_blobs %>% mutate(period='time2'))
+
+gg_PA_time1 <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PA_time1_time2 %>% filter(period=='time1') %>% st_buffer(20000), 
+            aes(fill=factor(presence)), col=NA, show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    scale_fill_manual(values = c("#474545","#E31A1C"))+
+    scale_color_manual(values = c("#474545","#E31A1C")) +
+    labs(title='PA', subtitle='time1: 2000-2013', col='') +
+    theme_bw() +    
+    theme(text=element_text(size = 14)) 
+
+gg_PA_time2 <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PA_time1_time2 %>% filter(period=='time2') %>% st_buffer(20000), 
+            aes(fill=factor(presence), col=factor(presence)), show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    scale_fill_manual(values = c("#434445","#1F78B4"))+
+    scale_color_manual(values = c("#434445","#1F78B4")) +
+    labs(title='', subtitle='time2: 2014 to 2021', col='') +
+    theme_bw() +    
+    theme(text=element_text(size = 14)) 
+
+gg_PA_time1 + gg_PA_time2
+
+# ggsave(plot = gg_PA_time1 + gg_PA_time2, 
+#        filename='docs/figs/PA_data.svg', device = 'svg', width=10, height=10, dpi=300)
+```
 
 ## Presence-only data
-``` {r, message = FALSE, warning=FALSE}
-# for specifications on how these data were prepared see biodiversity_data_preparation.Rmd
-PO_herpailurus_pre <- terra::rast('data/PO_herpailurus_pre_raster.tif') 
-PO_herpailurus_pos <- terra::rast('data/PO_herpailurus_pos_raster.tif')
+
+### Calculate PO rasters
+
+```{r}
+#| echo: true
+#| eval: true
+#| label: PO-data
+#| message: false
+#| warning: false
+
+# rasterisation of the presence-only data
+data_PO_GIS <- data_carnivores_PO %>% 
+  filter(species == 'Herpailurus yagouaroundi') %>% 
+  mutate(year=lubridate::year(eventDate)) %>% 
+  filter(year>=2000, year<=2021) %>% 
+  as.data.frame() %>% 
+  sf::st_as_sf(coords=c('decimalLongitude', 'decimalLatitude')) %>% 
+  st_set_crs(4326) 
+
+PO <- st_transform(data_PO_GIS, crs=equalareaCRS)
+
+# functions to create presence-only rasters for time1 and time2 for each species
+calculate_PO_sp_period_raster <- function(PO, sp, raster, time){
+  periodStart <- 2000
+  periodEnd <- 2014
+  df_period <- PO %>% filter(species==sp & !is.na(year)) %>% 
+    filter(year>=periodStart) %>% 
+    mutate(period=ifelse(year>=periodEnd , 'time2', 'time1'),
+           occurrence=1) %>% filter(period==time)
+  df_period_raster <- terra::rasterize(x = vect(df_period),
+                                       y = raster,
+                                       field = 'occurrence',
+                                       fun = 'length',
+                                       sum = T, background=0) %>% mask(., raster)
+  
+  df_country_raster <- terra::rasterize(x = vect(df_period),
+                                       y = raster,
+                                       field = 'countryCode',
+                                       fun = 'first') %>% mask(., raster)
+  
+  names(df_period_raster) <- 'count'
+  names(df_country_raster) <- 'country'
+  df_raster <- c(df_period_raster, df_country_raster)
+  return(df_raster)
+}
+
+# Herpailurus yagouaroundi
+PO_hyagouaroundi_time1_raster <- calculate_PO_sp_period_raster(PO, 'Herpailurus yagouaroundi', Latam.raster, 'time1')
+PO_hyagouaroundi_time2_raster <- calculate_PO_sp_period_raster(PO, 'Herpailurus yagouaroundi', Latam.raster, 'time2')
+```
+
+### Plots
+
+```{r}
+#| echo: true
+#| eval: true
+#| label: PO-plots
+#| message: false
+#| warning: false
+
+data_PO_time1_time2 <- data_PO_GIS %>% 
+  mutate(period=ifelse(year>=2014 , 'time2', 'time1'), occurrence=1) 
+
+gg_PO_time1 <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PO_time1_time2 %>% filter(period=='time1'), col="#E31A1C", size=0.5, show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    labs(title='PO time1: 2000-2013', col='') +
+    theme_bw() +
+    theme(text=element_text(size = 14))
+
+gg_PO_time2 <- ggplot() + 
+    geom_sf(data=Latam_countries, fill='#fafaf8', col='#bfc5c7', size=0.2) +
+    geom_sf(data=yaguarundi_IUCN, fill='grey60', alpha=0.5, col='grey90', size=0.1) +
+    geom_sf(data=data_PO_time1_time2 %>% filter(period=='time2'), col="#1F78B4", size=0.5, show.legend = F) +
+    coord_sf(xlim = c(-3500000, 4100000), ylim = c(-4400000, 3000000)) + # st_bbox(yaguarundi_IUCN)
+    labs(title='PO time2: 2014 to 2021', col='') +
+    theme_bw() +
+    theme(text=element_text(size = 14))
+    
+gg_PO_time1 + gg_PO_time2
+
+# ggsave(plot = gg_PO_time1 + gg_PO_time2, 
+#        filename='docs/figs/PO_data.svg', device = 'svg', width=10, height=10, dpi=300)
+```
+
+
+# Covariates data
+
+ - `bio7`: Temperature Annual Range
+ - `bio15`: Precipitation Seasonality
+ - `npp`: Net Primary Production (NPP)
+ - `elev`: Elevation
+
+``` {r}
+#| echo: true
+#| eval: true
+#| label: covariates
+#| message: false
+#| warning: false
+
+bio <- rast('big_data/bio_high.tif')
+elev <- rast('big_data/elev_high.tif')
+npp <- rast('big_data/npp_high.tif')
+npp <- resample(npp, bio, method='bilinear') 
+names(npp) <- 'npp'
+
+# environmental layers for PA
+env <- c(bio[[c('bio_7','bio_15')]], elev, npp) %>% 
+  classify(cbind(NaN, NA))
+
+# resample and scaled values for PO
+env_100k_resampled <- terra::resample(env, Latam.raster, method='bilinear') %>% 
+  classify(cbind(NaN, NA)) %>% scale() # scaled values to 0 mean and sd of 1
+```
+
+
+# Thinning parametres 
+
+ - `acce`: Accessibility
+ - `country`: Country of origin
+ 
+``` {r}
+#| echo: true
+#| eval: true
+#| label: thinning-parameters
+#| message: false
+#| warning: false
+
+acce_100k_resampled <- terra::rast('big_data/acce.tif') %>% 
+  classify(cbind(NaN, NA)) # values are scaled
+```
+
+## Data for the model
+
+### Presence-only data
+``` {r}
+#| echo: true
+#| eval: true
+#| label: PO-data-for-model
+#| message: false
+#| warning: false
 
 # calculate area in each raster cell
-PO_herpailurus.area <- terra::cellSize(PO_herpailurus_pre[[1]], unit='m', transform=F) %>% 
-  classify(cbind(NaN, NA)) %>% values()
+PO_hyagouaroundi.area <- terra::cellSize(PO_hyagouaroundi_time1_raster[[1]], unit='m', transform=F) %>% 
+  classify(cbind(NaN, NA)) %>% terra::values()
 
 # calculate coordinates for each raster cell
-PO_herpailurus.coords <- terra::xyFromCell(PO_herpailurus_pre, cell=1:ncell(PO_herpailurus_pre)) %>% as.data.frame()
-names(PO_herpailurus.coords) <- c('X', 'Y')
+PO_hyagouaroundi.coords <- terra::xyFromCell(PO_hyagouaroundi_time1_raster, cell=1:ncell(PO_hyagouaroundi_time1_raster)) %>% as.data.frame()
+names(PO_hyagouaroundi.coords) <- c('X', 'Y')
 
 # number of cells in the rasters (both the same)
-PO_herpailurus.cell <- 1:ncell(PO_herpailurus_pre)
+PO_hyagouaroundi.cell <- 1:ncell(PO_hyagouaroundi_time1_raster)
 
 # with the environmental variables values for each cell
-PO_herpailurus.env <- env_100k_resampled[] # scaled values
-PO_herpailurus.land <- land_100k_resampled[] # scaled values
+PO_hyagouaroundi.env <- env_100k_resampled[] # scaled values
 
 # with the mean accessibility value for each cell
-PO_herpailurus.acce <- acce_100k_resampled # scaled values
+PO_hyagouaroundi.acce <- acce_100k_resampled # scaled values
 
 # calculate point count in each raster cell
-PO_herpailurus_pre.count <- PO_herpailurus_pre %>%
-    classify(cbind(NaN, NA)) %>% values %>% as_tibble %>% 
+PO_hyagouaroundi_time1.count <- PO_hyagouaroundi_time1_raster %>%
+    classify(cbind(NaN, NA)) %>% terra::values() %>% as_tibble %>% 
   dplyr::select(count)
 
-PO_herpailurus_pos.count <- PO_herpailurus_pos %>%
-    classify(cbind(NaN, NA)) %>% values %>% as_tibble %>% 
+PO_hyagouaroundi_time2.count <- PO_hyagouaroundi_time2_raster %>%
+    classify(cbind(NaN, NA)) %>% terra::values() %>% as_tibble %>% 
   dplyr::select(count)
 
-PO_herpailurus.countries <- Latam_countries %>% classify(cbind(NaN, NA))
+PO_hyagouaroundi.countries <- Latam.raster.countries %>% classify(cbind(NaN, NA))
 
-# save pre and pos datasets 
-PO_herpailurus_pre.model.data <- data.frame(PO_herpailurus.coords,
-                                            pixel = PO_herpailurus.cell[],
-                                            area = PO_herpailurus.area,
-                                            pt.count = PO_herpailurus_pre.count,
-                                            env = cbind(PO_herpailurus.env, 
-                                                        land=PO_herpailurus.land),
-                                            acce = PO_herpailurus.acce[], 
-                                            country = PO_herpailurus.countries[])
+# save time1 and time2 datasets 
+PO_hyagouaroundi_time1.model.data <- data.frame(PO_hyagouaroundi.coords,
+                                            pixel = PO_hyagouaroundi.cell[],
+                                            area = PO_hyagouaroundi.area,
+                                            pt.count = PO_hyagouaroundi_time1.count,
+                                            env = PO_hyagouaroundi.env,
+                                            acce = PO_hyagouaroundi.acce[], 
+                                            country = PO_hyagouaroundi.countries[])
 
-PO_herpailurus_pos.model.data <- data.frame(PO_herpailurus.coords,
-                                            pixel = PO_herpailurus.cell[],
-                                            area = PO_herpailurus.area,
-                                            pt.count = PO_herpailurus_pos.count,
-                                            env = cbind(PO_herpailurus.env, 
-                                                        land=PO_herpailurus.land),
-                                            acce = PO_herpailurus.acce[], 
-                                            country = PO_herpailurus.countries[])
+PO_hyagouaroundi_time2.model.data <- data.frame(PO_hyagouaroundi.coords,
+                                            pixel = PO_hyagouaroundi.cell[],
+                                            area = PO_hyagouaroundi.area,
+                                            pt.count = PO_hyagouaroundi_time2.count,
+                                            env = PO_hyagouaroundi.env,
+                                            acce = PO_hyagouaroundi.acce[], 
+                                            country = PO_hyagouaroundi.countries[])
 
+```
+
+Check data
+
+```{r}
+#| echo: true
+#| eval: true
+#| label: PO-data-for-model-check
+#| message: false
+#| warning: false
+
+head(PO_hyagouaroundi_time1.model.data) %>% kable()
+head(PO_hyagouaroundi_time2.model.data) %>% kable()
 ```
 
 ## Presence-absence data 
-``` {r, message = FALSE, warning=FALSE}
-# for specifications on how these data were prepared see biodiversity_data_preparation.Rmd
-PA_herpailurus_pre <- readRDS('data/PA_herpailurus_pre_blobs.Rds')
-PA_herpailurus_pos <- readRDS('data/PA_herpailurus_pos_blobs.Rds')
+```{r}
+#| echo: true
+#| eval: true
+#| label: PA-data-for-model
+#| message: false
+#| warning: false
 
 # calculate area, coordinates, and point count in each raster cell
-PA_herpailurus.area.pre <- as.numeric(PA_herpailurus_pre$blobArea) 
-PA_herpailurus.area.pos <- as.numeric(PA_herpailurus_pos$blobArea) 
+PA_hyagouaroundi.area.time1 <- as.numeric(PA_hyagouaroundi_time1_blobs$blobArea) 
+PA_hyagouaroundi.area.time2 <- as.numeric(PA_hyagouaroundi_time2_blobs$blobArea) 
 
-PA_herpailurus.coords.pre <- st_coordinates(st_centroid(PA_herpailurus_pre)) %>% as_tibble()
-PA_herpailurus.coords.pos <- st_coordinates(st_centroid(PA_herpailurus_pos)) %>% as_tibble()
+PA_hyagouaroundi.coords.time1 <- st_coordinates(st_centroid(PA_hyagouaroundi_time1_blobs)) %>% as_tibble()
+PA_hyagouaroundi.coords.time2 <- st_coordinates(st_centroid(PA_hyagouaroundi_time2_blobs)) %>% as_tibble()
 
-PA_herpailurus.pixel.pre <- terra::cells(PO_herpailurus_pre, vect(st_centroid(PA_herpailurus_pre))) 
-PA_herpailurus.pixel.pos <- terra::cells(PO_herpailurus_pos, vect(st_centroid(PA_herpailurus_pos))) 
+PA_hyagouaroundi.pixel.time1 <- terra::cells(PO_hyagouaroundi_time1_raster, vect(st_centroid(PA_hyagouaroundi_time1_blobs))) 
+PA_hyagouaroundi.pixel.time2 <- terra::cells(PO_hyagouaroundi_time2_raster, vect(st_centroid(PA_hyagouaroundi_time2_blobs))) 
 
 # mode to calculate the most frequent value for the blob - this needs to be changed to getting the %are for each landcover
 mode_raster  <- function(x, na.rm = FALSE) {
@@ -221,54 +488,79 @@ mode_raster  <- function(x, na.rm = FALSE) {
   return(ux[which.max(tabulate(match(x, ux)))])
 }
 
-PA_herpailurus.env.pre <- terra::extract(x = env, y = vect(PA_herpailurus_pre), fun = mean, rm.na=T) %>% 
+PA_hyagouaroundi.env.time1 <- terra::extract(x = env, y = vect(PA_hyagouaroundi_time1_blobs), fun = mean, rm.na=T) %>% 
   mutate(across(where(is.numeric), ~ifelse(is.nan(.), NA, .))) %>% scale()
 
-PA_herpailurus.land.pre <- terra::extract(x = land, y = vect(PA_herpailurus_pre), fun = mode_raster, na.rm=TRUE)
-
-PA_herpailurus.env.pos <- terra::extract(x = env, y = vect(PA_herpailurus_pos), fun = mean, rm.na=T) %>% 
+PA_hyagouaroundi.env.time2 <- terra::extract(x = env, y = vect(PA_hyagouaroundi_time2_blobs), fun = mean, rm.na=T) %>% 
   mutate(across(where(is.numeric), ~ifelse(is.nan(.), NA, .))) %>% scale()
 
-PA_herpailurus.land.pos <- terra::extract(x = land, y = vect(PA_herpailurus_pos), fun = mode_raster, na.rm=TRUE)
+PA_hyagouaroundi_time1.model.data <- data.frame(pixel = PA_hyagouaroundi.pixel.time1, 
+                                            PA_hyagouaroundi.coords.time1,
+                                            area = PA_hyagouaroundi.area.time1,
+                                            presabs = PA_hyagouaroundi_time1_blobs$presence,
+                                            effort = PA_hyagouaroundi_time1_blobs$effort,
+                                            env = PA_hyagouaroundi.env.time1[,2:5])
 
-
-PA_herpailurus_pre.model.data <- data.frame(pixel = PA_herpailurus.pixel.pre, 
-                                            PA_herpailurus.coords.pre,
-                                            area = PA_herpailurus.area.pre,
-                                            presabs = PA_herpailurus_pre$presence,
-                                            effort = PA_herpailurus_pre$effort,
-                                            env = cbind(PA_herpailurus.env.pre[,2:24], 
-                                                        land=PA_herpailurus.land.pre[,2]))
-
-PA_herpailurus_pos.model.data <- data.frame(pixel = PA_herpailurus.pixel.pos, 
-                                            PA_herpailurus.coords.pos,
-                                            area = PA_herpailurus.area.pos,
-                                            presabs = PA_herpailurus_pos$presence,
-                                            effort = PA_herpailurus_pos$effort,
-                                            env = cbind(PA_herpailurus.env.pos[,2:24], 
-                                                        land=PA_herpailurus.land.pos[,2]))
+PA_hyagouaroundi_time2.model.data <- data.frame(pixel = PA_hyagouaroundi.pixel.time2, 
+                                            PA_hyagouaroundi.coords.time2,
+                                            area = PA_hyagouaroundi.area.time2,
+                                            presabs = PA_hyagouaroundi_time2_blobs$presence,
+                                            effort = PA_hyagouaroundi_time2_blobs$effort,
+                                            env = PA_hyagouaroundi.env.time2[,2:5])
 
 ```
 
-### Plots
+ Check data
 
-```{r presence-absence-plots, message = FALSE, warning=FALSE, eval=T}
-tmap::tmap_mode(mode ='view')
+```{r}
+#| echo: true
+#| eval: true
+#| label: PA-data-for-model-check
+#| message: false
+#| warning: false
 
-tmap::tm_shape(PA_herpailurus_pre) +
-  tmap::tm_fill(col = 'presence', n=2, 
-                palette = 'Spectral', syle='pretty', legend.show = F)
-
-tmap::tm_shape(PA_herpailurus_pos) +
-  tmap::tm_fill(col = 'presence', n=2, 
-                palette = 'Spectral', syle='pretty', legend.show = F) 
+head(PA_hyagouaroundi_time1.model.data) %>% kable()
+head(PA_hyagouaroundi_time2.model.data) %>% kable()
 ```
 
 
-### Datasets in the covariate space
+# Save data
+ 
+
+```{r}
+#| echo: true
+#| eval: false
+#| label: save-data
+#| message: false
+#| warning: false
+#| code-fold: false
+
+saveRDS(PO_hyagouaroundi_time1.model.data, 'data/data_hyagouaroundi_PO_time1.rds')
+saveRDS(PO_hyagouaroundi_time2.model.data, 'data/data_hyagouaroundi_PO_time2.rds')
+saveRDS(PA_hyagouaroundi_time1.model.data, 'data/data_hyagouaroundi_PA_time1.rds')
+saveRDS(PA_hyagouaroundi_time2.model.data, 'data/data_hyagouaroundi_PA_time2.rds')
+
+# blobs
+saveRDS(PA_hyagouaroundi_time1_blobs, 'data/PA_hyagouaroundi_time1_blobs.rds')
+saveRDS(PA_hyagouaroundi_time2_blobs, 'data/PA_hyagouaroundi_time2_blobs.rds')
+
+# presence-only rasters
+terra::writeRaster(PO_hyagouaroundi_time1_raster, 'data/PO_hyagouaroundi_time1_raster.tif', overwrite=TRUE)
+terra::writeRaster(PO_hyagouaroundi_time2_raster, 'data/PO_hyagouaroundi_time2_raster.tif', overwrite=TRUE)
+
+```
+
+
+## Datasets in the covariate space
 The range (and interquartile range) of values for each covariate that is sampled by each dataset
 
-```{r range, message = FALSE, warning=FALSE, eval=T}
+```{r}
+#| echo: true
+#| eval: true
+#| label: IQR
+#| message: false
+#| warning: false
+
 getRangeIQR <- function(env_PX){
   env_PX.df <- tibble(env= character(),
                           range = numeric(),
@@ -286,8 +578,8 @@ getRangeIQR <- function(env_PX){
 
 # covariates for PA
 env_PA <- terra::extract(x = env, 
-                         y = rbind(vect(PA_herpailurus_pre), 
-                                   vect(PA_herpailurus_pos)), #st_join with pos
+                         y = rbind(vect(PA_hyagouaroundi_time1_blobs), 
+                                   vect(PA_hyagouaroundi_time2_blobs)), 
                                      fun = mean, rm.na=T) %>% 
   mutate(across(where(is.numeric), ~ifelse(is.nan(.), NA, .))) 
 
@@ -317,15 +609,54 @@ for (i in 1:ncol(env_PO)){
 
 ```
 
+## Covariates
 
-## Save the data
-```{r, eval=T}
-write_csv(left_join(env_PA.RangeIQR, env_PO.RangeIQR, by='env'), file='docs/range_and_IQR.csv')
+bio7, bio15, npp and elevation
 
-saveRDS(PO_herpailurus_pre.model.data, 'data/PO_pre.rds') 
-saveRDS(PO_herpailurus_pos.model.data, 'data/PO_post.rds') 
+```{r}
+#| echo: true
+#| eval: true
+#| label: covariates plots
+#| message: false
+#| warning: false
+#| code-fold: false
 
-saveRDS(PA_herpailurus_pre.model.data, 'data/PA_pre.rds')
-saveRDS(PA_herpailurus_pos.model.data, 'data/PA_post.rds')
+library(patchwork)
+
+# use unscaled values
+env_100k_resampled <- terra::resample(env, Latam.raster, method='bilinear') %>% 
+  classify(cbind(NaN, NA))
+
+elev.plot <- tm_graticules(alpha = 0.3) +  
+    tm_shape(env_100k_resampled[["elev"]]) +
+    tm_raster(palette = 'BrBG', midpoint = NA, style= "cont", n=10)  + 
+    tm_shape(Latam_projected) +
+    tm_borders(alpha = 0.3) + 
+    tm_layout(legend.outside = T, frame.lwd = 0.3, scale=1.2, legend.outside.size = 0.1)
+
+npp.plot <- tm_graticules(alpha = 0.3) +  
+    tm_shape(env_100k_resampled[["npp"]]) +
+    tm_raster(palette = 'BuGn', midpoint = NA, style= "cont")  + 
+    tm_shape(Latam_projected) +
+    tm_borders(alpha = 0.3) + 
+    tm_layout(legend.outside = T, frame.lwd = 0.3, scale=1.2, legend.outside.size = 0.1)
+
+bio_7.plot <- tm_graticules(alpha = 0.3) +  
+    tm_shape(env_100k_resampled[["bio_7"]]) +
+    tm_raster(palette = 'RdYlBu', midpoint = NA, style= "cont")  + 
+    tm_shape(Latam_projected) +
+    tm_borders(alpha = 0.3) + 
+    tm_layout(legend.outside = T, frame.lwd = 0.3, scale=1.2, legend.outside.size = 0.1)
+
+bio_15.plot <- tm_graticules(alpha = 0.3) +  
+    tm_shape(env_100k_resampled[["bio_15"]]) +
+    tm_raster(palette = 'PuOr', midpoint = NA, style= "cont")  + 
+    tm_shape(Latam_projected) +
+    tm_borders(alpha = 0.3) + 
+    tm_layout(legend.outside = T, frame.lwd = 0.3, scale=1.2, legend.outside.size = 0.1)
+
+elev.plot 
+npp.plot
+bio_7.plot
+bio_15.plot
 ```
-
