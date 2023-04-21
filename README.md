@@ -1,8 +1,8 @@
-# Integrating presence-only and presence-absence data to model changes in species geographic ranges: An example of yaguarundí in Latin America
+# Integrating presence-only and presence–absence data to model changes in species geographic ranges: An example in the Neotropics
 
-*Florencia Grattarola, Diana Bowler & Petr Keil*
+*Florencia Grattarola, Diana E. Bowler & Petr Keil*
 
-This repository includes the data, code, model and outputs for our preprint on the use of integrated species distribution models (IDMs) to study the change over time of the yaguarundí's geograhic distribution range.
+This repository includes the data, code, model and outputs for our manuscript on the use of integrated species distribution models (IDMs) to study the change over time of the yaguarundí's geograhic distribution range.
 
 
 ![DAG](/docs/figs/DAG.png)
@@ -15,9 +15,10 @@ This repository includes the data, code, model and outputs for our preprint on t
   - [Model](/model): model file in BUGS language  
   - [Docs](/docs): model definitions + diagnostics + outputs + figures 
 
-This work is available under [CC-BY license](https://creativecommons.org/licenses/by/4.0/deed.en). If you reuse these scripts for your work, please cite our pre-print:
+This work is available under [CC-BY license](https://creativecommons.org/licenses/by/4.0/deed.en). If you reuse these scripts for your work, please cite our paper:
 
-Grattarola, F., Bowler, D., & Keil, P. (2022, April 29). Integrating presence-only and presence-absence data to model changes in species geographic ranges: An example of yaguarundí in Latin America. https://doi.org/10.32942/osf.io/67c4u
+Grattarola, F., Bowler, D. E., & Keil, P. (2023). Integrating presence-only and presence–absence data to model changes in species geographic ranges: An example in the Neotropics. Journal of Biogeography, 00, 1– 15. [https://doi.org/10.1111/jbi.14622](https://doi.org/10.1111/jbi.14622)
+
 
 
 
