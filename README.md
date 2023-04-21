@@ -4,10 +4,6 @@
 
 This repository includes the data, code, model and outputs for our manuscript on the use of integrated species distribution models (IDMs) to study the change over time of the yaguarundí's geograhic distribution range.
 
-
-![DAG](/docs/figs/DAG.png)
-
-
 **Find here**:
 
   - [Data](/data): PA and PO data to run the model + spatial data  
@@ -15,9 +11,11 @@ This repository includes the data, code, model and outputs for our manuscript on
   - [Model](/model): model file in BUGS language  
   - [Docs](/docs): model definitions + diagnostics + outputs + figures 
 
+![DAG](/docs/figs/DAG.png)
+
 This work is available under [CC-BY license](https://creativecommons.org/licenses/by/4.0/deed.en). If you reuse these scripts for your work, please cite our paper:
 
-Grattarola, F., Bowler, D. E., & Keil, P. (2023). Integrating presence-only and presence–absence data to model changes in species geographic ranges: An example in the Neotropics. Journal of Biogeography, 00, 1– 15. [https://doi.org/10.1111/jbi.14622](https://doi.org/10.1111/jbi.14622)
+Grattarola, F., Bowler, D. E., & Keil, P. (2023). Integrating presence-only and presence–absence data to model changes in species geographic ranges: An example in the Neotropics. *Journal of Biogeography*, 00, 1– 15. [https://doi.org/10.1111/jbi.14622](https://doi.org/10.1111/jbi.14622)
 
 
 
